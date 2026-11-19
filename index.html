@@ -648,7 +648,12 @@ async function copyAndGo(a) {
   showToast(ok ? "📋 Текст уже в чате — и на всякий случай скопирован" : "Не удалось скопировать", false);
   a.classList.add("copied");
   setTimeout(() => a.classList.remove("copied"), 1200);
-  setTimeout(() => { const w = window.open(a.href, "_blank"); if (!w) location.href = a.href; }, 250);
+  // Telegram: прямая ссылка приложения tg:// — лучше подставляет текст, когда Telegram уже открыт в фоне
+  const m = a.href.match(/^https:\/\/t\.me\/([A-Za-z0-9_]+)\?text=(.*)$/);
+  setTimeout(() => {
+    if (m) { location.href = `tg://resolve?domain=${m[1]}&text=${m[2]}`; return; }
+    const w = window.open(a.href, "_blank"); if (!w) location.href = a.href;
+  }, 250);
 }
 
 document.addEventListener("click", e => {
