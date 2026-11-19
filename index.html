@@ -645,7 +645,7 @@ async function copyAndGo(a) {
   const text = a.dataset.text;
   let ok = false;
   try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = copyFallback(text); }
-  showToast(ok ? "📋 Текст скопирован — вставь в чат и отправь" : "Не удалось скопировать", false);
+  showToast(ok ? "📋 Текст уже в чате — и на всякий случай скопирован" : "Не удалось скопировать", false);
   a.classList.add("copied");
   setTimeout(() => a.classList.remove("copied"), 1200);
   setTimeout(() => { const w = window.open(a.href, "_blank"); if (!w) location.href = a.href; }, 250);
