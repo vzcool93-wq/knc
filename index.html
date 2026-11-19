@@ -67,6 +67,7 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--map);outline-offset
 .sub{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .flag{display:inline-block;margin-left:6px;font-size:12px;vertical-align:middle;background:var(--note);color:var(--noteink);border:1px solid var(--notebd);border-radius:6px;padding:0 5px;font-family:system-ui,Roboto,sans-serif;letter-spacing:0;text-transform:none;font-weight:600}
 .item.off{opacity:.4}.item.off .nm{text-decoration:line-through}.item.off .av{background:var(--muted)}
+.item{-webkit-touch-callout:none}.item.holding{transform:scale(.985);transition:transform .4s ease;background:var(--soft)}
 .item.drag{position:relative;z-index:3;opacity:1;box-shadow:0 14px 34px rgba(0,0,0,.32);scale:1.03;transition:scale .2s ease,box-shadow .2s ease}
 .tog{flex:none;width:44px;height:44px;border:0;border-radius:12px;background:var(--soft);color:var(--ink);font-size:18px;font-weight:700;cursor:pointer}
 .handle{flex:none;width:44px;height:52px;border:0;background:none;color:var(--muted);font-size:24px;cursor:grab;touch-action:none}
@@ -658,6 +659,7 @@ async function copyAndGo(a) {
 }
 
 document.addEventListener("click", e => {
+  if (justDragged && e.target.closest("#list")) { e.preventDefault(); return; }
   const ct = e.target.closest("a[data-text]");
   if (ct) { e.preventDefault(); copyAndGo(ct); return; }
   const a = e.target.closest("[data-act]");
@@ -693,16 +695,34 @@ document.addEventListener("click", e => {
 });
 
 // ===== Перетаскивание пальцем за ⠿ =====
+// Удержи палец ~0,4 с на строке (или на ⠿) — строка «поднимется», и её можно тянуть
+const HOLD_MS = 400;
+let pending = null, justDragged = false;
 list.addEventListener("pointerdown", e => {
-  const h = e.target.closest(".handle");
-  if (!h) return;
-  e.preventDefault();
-  const li = h.closest(".item");
-  h.setPointerCapture(e.pointerId);
-  li.classList.add("drag");
-  drag = {li, startY: e.clientY, id: e.pointerId};
+  const li = e.target.closest(".item");
+  if (!li || li.classList.contains("off") || e.target.closest(".tog")) return;
+  if (e.target.closest(".handle")) e.preventDefault();
+  const id = e.pointerId, x0 = e.clientX, y0 = e.clientY, src = e.target;
+  li.classList.add("holding");
+  pending = {li, id, x0, y0, timer: setTimeout(() => {
+    li.classList.remove("holding");
+    try { src.setPointerCapture(id); } catch (err) {}
+    li.classList.add("drag");
+    if (navigator.vibrate) try { navigator.vibrate(25); } catch (err) {}
+    drag = {li, startY: pending.y, id};
+    pending = null;
+  }, HOLD_MS), y: y0};
 });
+const cancelPending = () => { if (pending) { clearTimeout(pending.timer); pending.li.classList.remove("holding"); pending = null; } };
+// пока тянем — не даём странице прокручиваться
+list.addEventListener("touchmove", e => { if (drag) e.preventDefault(); }, {passive: false});
+list.addEventListener("contextmenu", e => { if (pending || drag) e.preventDefault(); });
 list.addEventListener("pointermove", e => {
+  if (pending && e.pointerId === pending.id) {
+    pending.y = e.clientY;
+    if (Math.abs(e.clientX - pending.x0) > 8 || Math.abs(e.clientY - pending.y0) > 8) cancelPending();
+    return;
+  }
   if (!drag || e.pointerId !== drag.id) return;
   const {li} = drag, y = e.clientY;
   const ok = el => el && el.classList.contains("item") && !el.classList.contains("off");
@@ -730,7 +750,9 @@ list.addEventListener("pointermove", e => {
   if (y < 70) window.scrollBy(0, -10); else if (y > window.innerHeight - 70) window.scrollBy(0, 10);
 });
 const endDrag = e => {
+  if (pending && e.pointerId === pending.id) { cancelPending(); return; }
   if (!drag || e.pointerId !== drag.id) return;
+  justDragged = true; setTimeout(() => { justDragged = false; }, 400);
   // не сбрасываем сдвиг — render() плавно довезёт карточку из-под пальца на её место
   const prevOrder = JSON.stringify({order: state.order, hidden: state.hidden});
   const active = [...list.querySelectorAll(".item:not(.off)")].map(el => el.dataset.n);
