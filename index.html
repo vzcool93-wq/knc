@@ -76,6 +76,66 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--map);outline-offset
 .empty{text-align:center;padding:22px 10px;color:var(--muted)}
 .back{font:inherit;font-weight:700;background:none;border:0;color:var(--map);padding:6px 0 12px;min-height:44px;cursor:pointer}
 #detail{display:none}
+/* ===== вкладки ===== */
+body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+#tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:1fr 1fr;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 12px rgba(0,0,0,.08)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:60px;justify-content:center;border:0;background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.tab span{font-size:22px;line-height:1;filter:grayscale(1);opacity:.6;transition:all .2s}
+.tab.on{color:var(--brand2)}.tab.on span{filter:none;opacity:1;transform:scale(1.1)}
+#toast{bottom:calc(76px + env(safe-area-inset-bottom))}
+main[hidden]{display:none}
+#kitchen{max-width:640px;margin:0 auto;padding:12px max(3vw,10px) 40px}
+/* ===== таймеры ===== */
+#timers{position:sticky;top:0;z-index:35;display:none;flex-wrap:wrap;gap:6px;padding:8px max(3vw,10px);background:var(--bg);border-bottom:1px solid var(--line)}
+#timers.show{display:flex}
+.tmr{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border-radius:12px;background:#fff3c4;color:#3d2e00;border:2px solid #f2b705;cursor:pointer;font-size:14px}
+.tmr b{font-size:18px;font-variant-numeric:tabular-nums;min-width:52px}
+.tmr .tl{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.tmr button{min-width:38px;height:38px;border:0;border-radius:9px;background:rgba(0,0,0,.08);color:inherit;font:inherit;font-weight:800;cursor:pointer}
+.tmr.ring{background:#d93025;border-color:#d93025;color:#fff;animation:ring .8s ease-in-out infinite}
+.tmr.ring button{background:#fff;color:#d93025;min-width:52px}
+@keyframes ring{50%{transform:scale(1.05)}}
+/* ===== техкарта ===== */
+.rav{background:var(--brand)!important;font-size:18px}
+.rcp .rhead small{color:var(--muted);font-size:13px}.rcp h2{margin:2px 0 6px;font-size:clamp(22px,6.5vw,30px);line-height:1.1}
+.rmeta{margin:0 0 4px;color:var(--muted);font-size:14px}
+.pctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+.plbl{font-weight:700}
+.pbtn{width:52px;height:52px;border-radius:14px;border:2px solid var(--line);background:var(--soft);color:var(--ink);font-size:26px;font-weight:700;cursor:pointer}
+.pnum{width:80px;height:52px;text-align:center;font:inherit;font-size:26px;font-weight:800;border-radius:14px;border:2px solid var(--go);background:var(--bg);color:var(--ink)}
+.cookbtn{width:100%;min-height:58px;border:0;border-radius:14px;background:var(--go);color:#fff;font:inherit;font-size:18px;font-weight:800;cursor:pointer}
+.ing{padding:6px 10px;margin-bottom:8px}.ing h3{margin:8px 4px 4px;font-size:15px;color:var(--brand2)}
+.ingrow{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:6px 4px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.ingrow:first-of-type{border-top:0}
+.ck{flex:none;width:26px;height:26px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;font-weight:800;color:#fff}
+.ingrow.on .ck{background:var(--go);border-color:var(--go)}.ingrow.on .iname,.ingrow.on .iamt{opacity:.45}
+.iname{flex:1;font-size:16px}.iname small,.iamt small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+.iamt{flex:none;text-align:right;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.step{margin-bottom:8px}.step.sdone{opacity:.55}
+.shead{display:flex;align-items:center;gap:10px}.shead b{flex:1;font-size:17px}
+.snum{flex:none;width:32px;height:32px;border-radius:50%;background:var(--brand);color:var(--cream);display:grid;place-items:center;font-weight:800}
+.sdone .snum{background:var(--go)}
+.sck{flex:none;width:44px;height:44px;border:0;border-radius:12px;background:var(--soft);color:var(--ink);font-size:18px;font-weight:700;cursor:pointer}
+.temp{display:inline-block;margin:8px 0 0;padding:4px 10px;border-radius:10px;background:light-dark(#ffe9dc,#3a1d0e);color:light-dark(#8a3200,#ffb27a);font-weight:700;font-size:14px}
+.temp.big{font-size:18px;padding:6px 14px}
+.stext{margin:8px 0 0;font-size:16px;line-height:1.6}
+.amt{display:inline-block;padding:0 7px;border-radius:7px;background:var(--mapbg);color:var(--mapink);font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tchips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tchip{min-height:44px;padding:0 14px;border-radius:12px;border:2px solid #f2b705;background:#fff3c4;color:#3d2e00;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.tchip.on{display:inline-flex;align-items:center;opacity:.7;cursor:default}
+.tchips.big .tchip{min-height:56px;font-size:17px;flex:1 1 auto}
+.info p{margin:0 0 8px;font-size:15px}.info p:last-child{margin:0}
+/* ===== режим готовки ===== */
+.cook .ctop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cook .ctop span{color:var(--muted);font-size:13px;flex:1;text-align:right}
+.cprog{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0 12px}.cprog i{display:block;height:100%;background:var(--go);transition:width .5s cubic-bezier(.22,1,.36,1)}
+.cstep{margin:0;color:var(--muted);font-weight:700}
+.ctitle{margin:4px 0 8px;font-size:clamp(28px,8vw,40px);line-height:1.05}
+.ctext{font-size:clamp(19px,5.2vw,23px);line-height:1.6;margin:12px 0}
+.ctext .amt{padding:1px 8px}
+.cnav{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-top:20px}
+.cnav .btn{min-height:64px;font-size:17px}.cnav .btn[disabled]{opacity:.35}
+.cnext{background:var(--go)!important;border-color:var(--go)!important;color:#fff!important}
+
 .min.copied,.arrive.copied{outline:3px solid #f2b705;outline-offset:2px}
 .backup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:8px}
 .backup .btn{font-size:14px;min-height:46px;background:transparent;border-style:dashed;color:var(--muted)}
@@ -145,7 +205,8 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--map);outline-offset
   <h1 class="cond">Keer Noon Club</h1>
   <span id="hdr" class="hdr"></span>
 </header>
-<main>
+<div id="timers" aria-live="polite"></div>
+<main id="delivery">
   <div id="home">
     <div class="sec cond"><span>Следующий</span></div>
     <div id="next"></div>
@@ -157,6 +218,8 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--map);outline-offset
   </div>
   <div id="detail"></div>
 </main>
+<main id="kitchen" hidden></main>
+<nav id="tabs"><button class="tab" data-tab="delivery"><span>🚗</span>Доставка</button><button class="tab" data-tab="kitchen"><span>🍳</span>Кухня</button></nav>
 <script>
 {
 // ===== СПИСОК КОНТАКТОВ =====
@@ -644,11 +707,13 @@ function exportBackup() {
   showToast("Копия сохранена в Загрузки", false);
 }
 document.addEventListener("change", async e => {
-  if (e.target.id !== "importFile") return;
+  if (e.target.id !== "importFile" && e.target.id !== "importRecipes") return;
   const f = e.target.files[0]; e.target.value = "";
   if (!f) return;
   try {
     const j = JSON.parse(await f.text());
+    if (j && Array.isArray(j.recipes)) { try { await importRecipes(j); } catch (er) { showToast("В файле ошибка в техкартах", false); } return; }
+    if (e.target.id === "importRecipes") throw 0;
     const list = Array.isArray(j) ? j : j.list;
     if (!Array.isArray(list) || !list.every(p => p && typeof p.name === "string")) throw 0;
     if (CONTACTS.length && !(await confirmBox("Заменить список?", `Сейчас клиентов: ${CONTACTS.length}. В файле: ${list.length}. Текущий список заменится.`, "Да, заменить"))) return;
@@ -657,7 +722,7 @@ document.addEventListener("change", async e => {
     state.order = list.map(p => p.name); state.hidden = []; save(); render();
     showToast(`Загружено клиентов: ${list.length}`, false);
   } catch (err) {
-    showToast("Это не файл с контактами", false);
+    showToast(e.target.id === "importRecipes" ? "Это не файл с техкартами" : "Это не файл с контактами", false);
   }
 });
 
@@ -813,6 +878,298 @@ list.addEventListener("pointerup", endDrag);
 list.addEventListener("pointercancel", endDrag);
 
 document.addEventListener("submit", e => { if (e.target.id === "cform") { e.preventDefault(); submitForm(); } });
+
+// ================= КУХНЯ =================
+// Техкарты хранятся только на телефоне (загружаются из файла), в коде их нет.
+const RKEY = "knc-recipes-v1", KSKEY = "knc-kitchen-v1", TKEY = "knc-timers-v1";
+let RECIPES = [];
+try { const r = JSON.parse(localStorage.getItem(RKEY) || "null"); if (Array.isArray(r)) RECIPES = r; } catch (e) {}
+let KS = {portions: {}, checks: {}, step: {}, done: {}};
+try { const k = JSON.parse(localStorage.getItem(KSKEY) || "null"); if (k && typeof k === "object") KS = {portions: k.portions || {}, checks: k.checks || {}, step: k.step || {}, done: k.done || {}, open: k.open || null}; } catch (e) {}
+const saveKS = () => { try { localStorage.setItem(KSKEY, JSON.stringify(KS)); } catch (e) {} };
+const saveRecipes = () => { try { localStorage.setItem(RKEY, JSON.stringify(RECIPES)); } catch (e) {} };
+
+const kitchen = document.getElementById("kitchen");
+let kOpen = KS.open || null;      // id открытой техкарты (помним между запусками)
+let kCook = false;     // режим готовки (по шагам)
+
+// --- числа ---
+const portionsOf = r => KS.portions[r.id] || r.base;
+const factorOf = r => portionsOf(r) / r.base;
+function fmtAmount(v, unit) {
+  if (unit === "шт") return Math.max(1, Math.round(v)) + " шт";
+  const u = unit || "г";
+  if (v < 10) return String(Math.round(v * 10) / 10).replace(".", ",") + " " + u;
+  const n = Math.round(v);
+  return (n >= 1000 ? n.toLocaleString("ru-RU") : String(n)) + " " + u;
+}
+function findItem(r, id) {
+  for (const s of r.sections || []) for (const it of s.items || []) if (it.id === id) return it;
+  return null;
+}
+// {id} — всё количество ингредиента, {id:b} — брутто, {50} — 50 г на базу, {3000:мл} — с единицей
+function renderText(r, text) {
+  const f = factorOf(r);
+  return esc(text).replace(/\{([^}]+)\}/g, (m, key) => {
+    const [k, mod] = key.split(":");
+    if (/^\d+([.,]\d+)?$/.test(k)) return `<span class="amt">${fmtAmount(parseFloat(k.replace(",", ".")) * f, mod)}</span>`;
+    const it = findItem(r, k);
+    if (!it) return m;
+    const base = mod === "b" && it.b ? it.b : it.g;
+    return `<span class="amt">${fmtAmount(base * f, it.unit)}</span>`;
+  });
+}
+
+// --- таймеры (считают от времени окончания, переживают закрытие приложения) ---
+let TIMERS = [];
+try { const t = JSON.parse(localStorage.getItem(TKEY) || "null"); if (Array.isArray(t)) TIMERS = t; } catch (e) {}
+const saveTimers = () => { try { localStorage.setItem(TKEY, JSON.stringify(TIMERS)); } catch (e) {} };
+const timersBar = document.getElementById("timers");
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); }
+    if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && (kCook || TIMERS.some(t => !t.ack))) keepAwake(true); });
+function startTimer(label, min, rid, step) {
+  const id = Date.now() + "" + Math.floor(Math.random() * 1000);
+  TIMERS.push({id, label, rid, step, end: Date.now() + min * 60000, dur: min * 60000, ack: false, rang: false});
+  saveTimers(); renderTimers(); keepAwake(true);
+  try { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission(); } catch (e) {}
+  showToast(`⏱ ${label}: ${min} мин`, false);
+}
+const mmss = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+function alarm() {
+  chime([[880, 0, .25], [660, .3, .25], [880, .6, .25], [660, .9, .4]]);
+  if (navigator.vibrate) try { navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) {}
+}
+let timersSig = "";
+function renderTimers() {
+  const now = Date.now();
+  const active = TIMERS.filter(t => !t.ack);
+  timersBar.classList.toggle("show", active.length > 0);
+  // Пересобираем кнопки только когда меняется набор таймеров или их состояние —
+  // иначе просто обновляем цифры, чтобы нажатия не терялись
+  const sig = active.map(t => t.id + (t.end <= now ? "R" : "")).join("|");
+  if (sig !== timersSig) {
+    timersSig = sig;
+    timersBar.innerHTML = active.map(t => {
+      const done = t.end <= now;
+      return `<div class="tmr${done ? " ring" : ""}" data-k="tmr" data-id="${t.id}">
+        <span class="tl">${esc(t.label)}</span><b>${done ? "Готово!" : mmss(t.end - now)}</b>
+        ${done ? "" : `<button data-k="tplus" data-id="${t.id}" aria-label="Плюс минута">+1</button>`}
+        <button data-k="tstop" data-id="${t.id}" aria-label="${done ? "Выключить" : "Отменить"}">${done ? "✓" : "✕"}</button>
+      </div>`;
+    }).join("");
+  } else {
+    for (const t of active) {
+      const el = timersBar.querySelector(`.tmr[data-id="${t.id}"] b`);
+      if (el && t.end > now) el.textContent = mmss(t.end - now);
+    }
+  }
+}
+function tickTimers() {
+  const now = Date.now();
+  let changed = false;
+  for (const t of TIMERS) {
+    if (!t.ack && t.end <= now) {
+      // звенит каждые 4 секунды, пока не нажали ✓ (но не дольше 2 минут)
+      if (!t.rang || (now - (t.lastRing || 0) > 4000 && now - t.end < 120000)) {
+        alarm(); t.rang = true; t.lastRing = now; changed = true;
+        if (document.visibilityState !== "visible") try { if ("Notification" in window && Notification.permission === "granted") new Notification("⏱ " + t.label + " — готово!", {tag: t.id}); } catch (e) {}
+      }
+    }
+  }
+  if (changed) saveTimers();
+  renderTimers();
+  if (!TIMERS.some(t => !t.ack) && !kCook) keepAwake(false);
+}
+setInterval(tickTimers, 500);
+
+// --- экраны ---
+function renderKitchen() {
+  if (!RECIPES.length) {
+    kitchen.innerHTML = `<div class="panel empty welcome"><div style="font-size:44px">🍳</div><h2 class="cond">Техкарт пока нет</h2><p>Загрузи файл с техкартами — он хранится только на этом телефоне.</p></div>
+      <label class="btn addnew">📂 Загрузить техкарты<input type="file" id="importRecipes" accept=".json,application/json" hidden></label>`;
+    return;
+  }
+  const r = RECIPES.find(x => x.id === kOpen);
+  if (!r) return renderRecipeList();
+  if (kCook) return renderCook(r);
+  renderRecipe(r);
+}
+function renderRecipeList() {
+  kitchen.innerHTML = `<div class="sec cond"><span>Техкарты · ${RECIPES.length}</span></div>
+    <ul class="list">${RECIPES.map(r => {
+      const steps = (r.steps || []).length, done = (KS.done[r.id] || []).length;
+      return `<li class="item"><button class="row" data-k="open" data-id="${esc(r.id)}">
+        <span class="av rav">🍳</span>
+        <span><div class="nm">${esc(r.title)}</div><div class="sub">${esc(r.code || "")} · ${esc(r.meal || "")} · ${portionsOf(r)} порц.${done ? ` · шаг ${Math.min(done + 1, steps)} из ${steps}` : ""}</div></span>
+      </button></li>`;
+    }).join("")}</ul>
+    <div class="backup"><button class="btn" data-k="export">💾 Копия техкарт</button><label class="btn">📂 Загрузить<input type="file" id="importRecipes" accept=".json,application/json" hidden></label></div>`;
+}
+function portionsCtl(r) {
+  return `<div class="pctl"><span class="plbl">Порций</span>
+    <button class="pbtn" data-k="pminus" aria-label="Меньше">−</button>
+    <input class="pnum" id="pnum" type="number" inputmode="numeric" min="1" max="200" value="${portionsOf(r)}">
+    <button class="pbtn" data-k="pplus" aria-label="Больше">+</button>
+    ${portionsOf(r) !== r.base ? `<button class="tb" data-k="pbase">как в карте: ${r.base}</button>` : ""}
+  </div>`;
+}
+function renderRecipe(r) {
+  const f = factorOf(r);
+  const checks = KS.checks[r.id] || [];
+  const doneSteps = KS.done[r.id] || [];
+  kitchen.innerHTML = `<button class="back" data-k="list">← Все техкарты</button>
+  <div class="panel rcp">
+    <div class="rhead"><small>${esc(r.code || "")} · ${esc(r.meal || "")}</small><h2 class="cond">${esc(r.title)}</h2>
+      ${r.portion ? `<p class="rmeta">${esc(r.portion)}</p>` : ""}${r.time ? `<p class="rmeta">⏱ ${esc(r.time)}</p>` : ""}</div>
+    ${portionsCtl(r)}
+    <button class="cookbtn" data-k="cook">▶ Готовить по шагам${doneSteps.length ? ` · продолжить с шага ${Math.min(doneSteps.length + 1, r.steps.length)}` : ""}</button>
+  </div>
+  <div class="sec cond"><span>Ингредиенты на ${portionsOf(r)} порц.</span>${checks.length ? `<button class="tb" data-k="uncheck">Снять галочки</button>` : ""}</div>
+  ${(r.sections || []).map(s => `<div class="panel ing"><h3>${esc(s.name)}</h3>${(s.items || []).map(it => {
+      const on = checks.includes(it.id);
+      return `<button class="ingrow${on ? " on" : ""}" data-k="check" data-id="${esc(it.id)}">
+        <span class="ck">${on ? "✓" : ""}</span>
+        <span class="iname">${esc(it.name)}${it.note ? `<small>${esc(it.note)}</small>` : ""}</span>
+        <span class="iamt">${fmtAmount(it.g * f, it.unit)}${it.b && it.b !== it.g ? `<small>брутто ${fmtAmount(it.b * f, it.unit)}</small>` : ""}</span>
+      </button>`;
+    }).join("")}</div>`).join("")}
+  <div class="sec cond"><span>Шаги</span>${doneSteps.length ? `<button class="tb" data-k="resetsteps">Сбросить шаги</button>` : ""}</div>
+  ${(r.steps || []).map((st, i) => stepCard(r, st, i, doneSteps.includes(i))).join("")}
+  ${r.info ? `<div class="sec cond"><span>Справка</span></div><div class="panel info">${Object.entries(r.info).map(([k, v]) => `<p><b>${esc(k)}:</b> ${esc(v)}</p>`).join("")}</div>` : ""}`;
+}
+function timerBtns(r, st, i) {
+  return (st.timers || []).map(t => {
+    const run = TIMERS.find(x => !x.ack && x.rid === r.id && x.step === i && x.label === t.label);
+    return run ? `<span class="tchip on">⏱ ${esc(t.label)} идёт</span>` : `<button class="tchip" data-k="timer" data-step="${i}" data-label="${esc(t.label)}" data-min="${t.min}">▶ ${esc(t.label)} · ${t.min} мин</button>`;
+  }).join("");
+}
+function stepCard(r, st, i, done) {
+  return `<div class="panel step${done ? " sdone" : ""}">
+    <div class="shead"><span class="snum">${done ? "✓" : i + 1}</span><b>${esc(st.title)}</b>
+      <button class="sck" data-k="stepdone" data-step="${i}" aria-label="Шаг выполнен">${done ? "↩" : "✓"}</button></div>
+    ${st.temp ? `<div class="temp">🔥 ${esc(st.temp)}</div>` : ""}
+    <p class="stext">${renderText(r, st.text)}</p>
+    ${(st.timers || []).length ? `<div class="tchips">${timerBtns(r, st, i)}</div>` : ""}
+  </div>`;
+}
+function renderCook(r) {
+  const n = r.steps.length;
+  const i = Math.min(KS.step[r.id] || 0, n - 1);
+  const st = r.steps[i];
+  const done = (KS.done[r.id] || []).includes(i);
+  kitchen.innerHTML = `<div class="cook">
+    <div class="ctop"><button class="back" data-k="cookexit">← Техкарта</button><span>${esc(r.title)} · ${portionsOf(r)} порц.</span></div>
+    <div class="cprog"><i style="width:${Math.round((i + 1) / n * 100)}%"></i></div>
+    <p class="cstep">Шаг ${i + 1} из ${n}${done ? " · ✓ выполнен" : ""}</p>
+    <h2 class="cond ctitle">${esc(st.title)}</h2>
+    ${st.temp ? `<div class="temp big">🔥 ${esc(st.temp)}</div>` : ""}
+    <p class="ctext">${renderText(r, st.text)}</p>
+    ${(st.timers || []).length ? `<div class="tchips big">${timerBtns(r, st, i)}</div>` : ""}
+    <div class="cnav">
+      <button class="btn" data-k="prev" ${i === 0 ? "disabled" : ""}>← Назад</button>
+      ${i < n - 1 ? `<button class="btn cnext" data-k="next">Готово, дальше →</button>` : `<button class="btn cnext" data-k="finish">✓ Блюдо готово</button>`}
+    </div>
+  </div>`;
+}
+
+// --- действия ---
+function setPortions(r, n) {
+  n = Math.max(1, Math.min(500, Math.round(n || r.base)));
+  KS.portions[r.id] = n; saveKS(); renderKitchen();
+}
+kitchen.addEventListener("change", e => {
+  if (e.target.id === "pnum") { const r = RECIPES.find(x => x.id === kOpen); if (r) setPortions(r, parseInt(e.target.value, 10)); }
+});
+kitchen.addEventListener("click", e => {
+  const a = e.target.closest("[data-k]");
+  if (!a) return;
+  const k = a.dataset.k;
+  const r = RECIPES.find(x => x.id === kOpen);
+  if (k === "open") { kOpen = KS.open = a.dataset.id; saveKS(); kCook = false; renderKitchen(); window.scrollTo(0, 0); return; }
+  if (k === "list") { kOpen = KS.open = null; saveKS(); kCook = false; renderKitchen(); window.scrollTo(0, 0); return; }
+  if (k === "export") { exportRecipes(); return; }
+  if (!r) return;
+  if (k === "pminus") setPortions(r, portionsOf(r) - 1);
+  if (k === "pplus") setPortions(r, portionsOf(r) + 1);
+  if (k === "pbase") setPortions(r, r.base);
+  if (k === "check") {
+    const c = KS.checks[r.id] = KS.checks[r.id] || [];
+    const j = c.indexOf(a.dataset.id); if (j < 0) c.push(a.dataset.id); else c.splice(j, 1);
+    saveKS(); a.classList.toggle("on"); a.querySelector(".ck").textContent = j < 0 ? "✓" : "";
+    return;
+  }
+  if (k === "uncheck") { KS.checks[r.id] = []; saveKS(); renderKitchen(); }
+  if (k === "stepdone") {
+    const d = KS.done[r.id] = KS.done[r.id] || [];
+    const i = +a.dataset.step, j = d.indexOf(i); if (j < 0) d.push(i); else d.splice(j, 1);
+    saveKS(); renderKitchen();
+  }
+  if (k === "resetsteps") { KS.done[r.id] = []; KS.step[r.id] = 0; saveKS(); renderKitchen(); }
+  if (k === "timer") { startTimer(a.dataset.label, +a.dataset.min, r.id, +a.dataset.step); renderKitchen(); }
+  if (k === "cook") {
+    const d = KS.done[r.id] || [];
+    let first = 0; while (d.includes(first) && first < r.steps.length - 1) first++;
+    KS.step[r.id] = first; saveKS(); kCook = true; keepAwake(true); renderKitchen(); window.scrollTo(0, 0);
+  }
+  if (k === "cookexit") { kCook = false; renderKitchen(); window.scrollTo(0, 0); }
+  if (k === "prev") { KS.step[r.id] = Math.max(0, (KS.step[r.id] || 0) - 1); saveKS(); renderKitchen(); }
+  if (k === "next" || k === "finish") {
+    const i = KS.step[r.id] || 0, d = KS.done[r.id] = KS.done[r.id] || [];
+    if (!d.includes(i)) d.push(i);
+    if (k === "next") { KS.step[r.id] = i + 1; saveKS(); renderKitchen(); window.scrollTo(0, 0); }
+    else { saveKS(); kCook = false; celebrate(a); showToast("🍳 " + r.title + " — готово", false); renderKitchen(); window.scrollTo(0, 0); }
+  }
+});
+timersBar.addEventListener("click", e => {
+  const a = e.target.closest("[data-k]");
+  if (!a) return;
+  const t = TIMERS.find(x => x.id === a.dataset.id);
+  if (!t) return;
+  if (a.dataset.k === "tplus") { t.end += 60000; t.dur += 60000; }
+  if (a.dataset.k === "tstop") { t.ack = true; TIMERS = TIMERS.filter(x => !x.ack); }
+  if (a.dataset.k === "tmr" && t.rid) { switchTab("kitchen"); kOpen = KS.open = t.rid; kCook = true; KS.step[t.rid] = t.step; saveKS(); renderKitchen(); window.scrollTo(0, 0); }
+  saveTimers(); renderTimers();
+  if (kOpen) renderKitchen();
+});
+function exportRecipes() {
+  const data = JSON.stringify({app: "knc", kind: "recipes", savedAt: new Date().toISOString(), recipes: RECIPES}, null, 1);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([data], {type: "application/json"}));
+  a.download = "knc-tehkarty.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  showToast("Копия техкарт сохранена в Загрузки", false);
+}
+async function importRecipes(j) {
+  const rs = j.recipes;
+  if (!Array.isArray(rs) || !rs.every(r => r && r.id && r.title && Array.isArray(r.steps) && r.base > 0)) throw 0;
+  if (RECIPES.length && !(await confirmBox("Обновить техкарты?", `Сейчас техкарт: ${RECIPES.length}. В файле: ${rs.length}. Совпадающие заменятся, новые добавятся.`, "Да, обновить"))) return;
+  for (const r of rs) { const i = RECIPES.findIndex(x => x.id === r.id); if (i >= 0) RECIPES[i] = r; else RECIPES.push(r); }
+  saveRecipes(); renderKitchen();
+  showToast(`Техкарт загружено: ${rs.length}`, false);
+}
+
+// --- вкладки ---
+const deliveryMain = document.getElementById("delivery");
+function switchTab(t) {
+  const k = t === "kitchen";
+  deliveryMain.hidden = k; kitchen.hidden = !k;
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  try { localStorage.setItem("knc-tab", t); } catch (e) {}
+  if (k) renderKitchen();
+  window.scrollTo(0, 0);
+}
+document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if (b) switchTab(b.dataset.tab); });
+let startTab = "delivery"; try { startTab = localStorage.getItem("knc-tab") || "delivery"; } catch (e) {}
+switchTab(startTab);
+renderTimers();
+
 renderHeader();
 render();
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
