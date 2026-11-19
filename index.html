@@ -66,6 +66,7 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--map);outline-offset
 .nm{font-family:"sans-serif-condensed","Roboto Condensed","Arial Narrow",sans-serif;font-stretch:condensed;font-weight:600;font-size:20px;letter-spacing:.03em;text-transform:uppercase;line-height:1.1}
 .sub{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .flag{display:inline-block;margin-left:6px;font-size:12px;vertical-align:middle;background:var(--note);color:var(--noteink);border:1px solid var(--notebd);border-radius:6px;padding:0 5px;font-family:system-ui,Roboto,sans-serif;letter-spacing:0;text-transform:none;font-weight:600}
+.item.delivered{opacity:.55}.item.delivered .nm{text-decoration:line-through}.item.delivered .av{background:var(--go);font-size:13px;gap:1px;display:flex;align-items:center;justify-content:center}.item.delivered .av i{font-style:normal;font-size:15px}
 .item.off{opacity:.4}.item.off .nm{text-decoration:line-through}.item.off .av{background:var(--muted)}
 .item{-webkit-touch-callout:none}.item.holding{transform:scale(.985);transition:transform .4s ease;background:var(--soft)}
 .item.drag{position:relative;z-index:3;opacity:1;box-shadow:0 14px 34px rgba(0,0,0,.32);scale:1.03;transition:scale .2s ease,box-shadow .2s ease}
@@ -239,7 +240,7 @@ const mapsLink = p => p.maps || "https://www.google.com/maps/search/?api=1&query
 let state = {order: defOrder(), hidden: [], today: {}};
 try {
   const st = JSON.parse(localStorage.getItem(KEY) || "null");
-  if (st && Array.isArray(st.order)) state = {order: st.order, hidden: Array.isArray(st.hidden) ? st.hidden : [], today: st.today && typeof st.today === "object" ? st.today : {}, trip: st.trip && st.trip.name && Date.now() - st.trip.start < 6 * 3600000 ? st.trip : null};
+  if (st && Array.isArray(st.order)) state = {order: st.order, hidden: Array.isArray(st.hidden) ? st.hidden : [], today: st.today && typeof st.today === "object" ? st.today : {}, done: Array.isArray(st.done) ? st.done : [], doneDay: st.doneDay || "", trip: st.trip && st.trip.name && Date.now() - st.trip.start < 6 * 3600000 ? st.trip : null};
 } catch (e) {}
 state.order = state.order.map(n => RENAME[n] || n);
 state.hidden = state.hidden.map(n => RENAME[n] || n);
@@ -249,6 +250,16 @@ const todayNote = name => { const t = (state.today || {})[name]; return t && t.d
 state.today = Object.fromEntries(Object.entries(state.today || {}).filter(([, t]) => t && t.date === dayKey()));
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
 const isOff = p => state.hidden.includes(p.name);
+// Доставленные за сегодня: остаются на своём месте со своим номером, утром сбрасываются
+state.done = Array.isArray(state.done) ? state.done : [];
+if (state.doneDay !== dayKey()) { state.done = []; state.doneDay = dayKey(); }
+const isDone = p => state.done.includes(p.name);
+function markDone(name) {
+  const k = state.done.indexOf(name);
+  if (k < 0) state.done.push(name); else state.done.splice(k, 1);
+  state.doneDay = dayKey();
+  save(); render();
+}
 
 function ordered() {
   const rank = n => { const k = state.order.indexOf(n); return k < 0 ? 999 : k; };
@@ -263,10 +274,10 @@ function toggle(name) {
 // Карточка человека: адрес, заметка, кнопки минут, отметка
 function panel(p) {
   const cs = contacts(p), main = cs[0];
-  const off = isOff(p);
+  const off = isOff(p), dn = isDone(p);
   const k = pickTpl();
   return `<div class="panel">
-    <div class="top"><span class="av">${esc((p.name[0] || "?").toUpperCase())}</span><h2 class="cond">${esc(p.name)}</h2><button class="more pinbtn" data-act="today" data-n="${esc(p.name)}" aria-label="Заметка на сегодня">📌</button><button class="more" data-act="edit" data-n="${esc(p.name)}" aria-label="Изменить данные ${esc(p.name)}">⋯</button></div>
+    <div class="top"><span class="av">${(() => { const n = ordered().filter(x => !isOff(x)).findIndex(x => x.name === p.name) + 1; return n ? n : esc((p.name[0] || "?").toUpperCase()); })()}</span><h2 class="cond">${esc(p.name)}</h2><button class="more pinbtn" data-act="today" data-n="${esc(p.name)}" aria-label="Заметка на сегодня">📌</button><button class="more" data-act="edit" data-n="${esc(p.name)}" aria-label="Изменить данные ${esc(p.name)}">⋯</button></div>
     ${p.address ? `<div class="addrrow"><a class="addr" href="${esc(navLink(p))}" target="_blank" rel="noopener"><span class="ic">🧭</span><span><small>Поехали · навигация</small><b>${esc(p.address)}</b></span></a><a class="pin" href="${esc(mapsLink(p))}" target="_blank" rel="noopener" aria-label="Место на карте">📍<small>карта</small></a></div>` : ""}
     ${todayNote(p.name) ? `<button class="today" data-act="today" data-n="${esc(p.name)}"><small>📌 Сегодня</small>${esc(todayNote(p.name))}</button>` : ""}
     ${p.note ? `<div class="note">${hl(p.note)}</div>` : ""}
@@ -277,7 +288,7 @@ function panel(p) {
     <div class="btns">
       <div class="two">
         ${main ? `<a class="btn" href="${esc(chatLink(main))}" target="_blank" rel="noopener">💬 Чат</a>` : ""}
-        <button class="btn done" data-act="tog" data-n="${esc(p.name)}">${off ? "↩ Вернуть" : "✓ Доставлено"}</button>
+        ${off ? `<button class="btn done" data-act="tog" data-n="${esc(p.name)}">↩ Вернуть в маршрут</button>` : `<button class="btn done" data-act="deliver" data-n="${esc(p.name)}">${dn ? "↩ Не доставлено" : "✓ Доставлено"}</button>`}
       </div>
       ${cs.slice(1).map(c => `<a class="btn" href="${esc(chatLink(c))}" target="_blank" rel="noopener">💬 Второй контакт · ${esc(c)}</a>`).join("")}
     </div>
@@ -295,7 +306,7 @@ let lastNext = null;
 const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 function snapshot() {
   const m = {};
-  list.querySelectorAll(".item").forEach(li => m[li.dataset.n] = {top: li.getBoundingClientRect().top, off: li.classList.contains("off")});
+  list.querySelectorAll(".item").forEach(li => m[li.dataset.n] = {top: li.getBoundingClientRect().top, off: li.classList.contains("off") || li.classList.contains("delivered")});
   return m;
 }
 function animateList(before) {
@@ -304,7 +315,7 @@ function animateList(before) {
     const b = before[li.dataset.n];
     if (!b) return;
     const dy = b.top - li.getBoundingClientRect().top;
-    const nowOff = li.classList.contains("off");
+    const nowOff = li.classList.contains("off") || li.classList.contains("delivered");
     if (!dy && b.off === nowOff) return;
     li.style.transition = "none";
     li.style.transform = `translateY(${dy}px)`;
@@ -320,8 +331,9 @@ function animateList(before) {
 function render() {
   const before = snapshot();
   const all = ordered();
-  const active = all.filter(p => !isOff(p));
-  const offCount = all.length - active.length;
+  const route = all.filter(p => !isOff(p));          // сегодняшний маршрут, с номерами
+  const active = route.filter(p => !isDone(p));      // кого ещё везти
+  const offCount = all.length - route.length;
   next.innerHTML = !all.length ? `<div class="panel empty welcome"><div style="font-size:44px">📦</div><h2 class="cond">Список пуст</h2><p>Нажми «📂 Восстановить» внизу и выбери файл с контактами — или добавь клиента вручную.</p></div>` : active.length ? panel(active[0]) : `<div class="panel finish">
       <div class="big">🎉</div>
       <h2 class="cond">Маршрут завершён!</h2>
@@ -333,16 +345,17 @@ function render() {
   if (nextName !== lastNext && lastNext !== null) next.firstElementChild.classList.add("enter");
   lastNext = nextName;
   const def = defOrder();
-  const changed = all.filter(p => !isOff(p)).map(p => p.name).join() !== def.filter(n => !state.hidden.includes(n)).join();
-  bar.innerHTML = `<span>Маршрут · ${active.length} из ${all.length}</span>${changed ? `<button class="tb" data-act="reset">↺ Исходный порядок</button>` : ""}${offCount ? `<button class="tb" data-act="showall">Вернуть всех</button>` : ""}`;
-  let num = 0;
+  const changed = route.map(p => p.name).join() !== def.filter(n => !state.hidden.includes(n)).join();
+  bar.innerHTML = `<span>Маршрут · доставлено ${route.length - active.length} из ${route.length}</span>${changed ? `<button class="tb" data-act="reset">↺ Исходный порядок</button>` : ""}${offCount ? `<button class="tb" data-act="showall">Вернуть всех</button>` : ""}`;
+  const firstActive = active.length ? active[0].name : null;
   list.innerHTML = all.map(p => {
-    const off = isOff(p);
-    return `<li class="item${off ? " off" : ""}${!off && num === 0 ? " first" : ""}" data-n="${esc(p.name)}">
-      <button class="row" data-open="${esc(p.name)}"><span class="av">${off ? "✓" : ++num}</span>
+    const off = isOff(p), dn = isDone(p);
+    const num = route.indexOf(p) + 1;
+    return `<li class="item${off ? " off" : ""}${dn ? " delivered" : ""}${p.name === firstActive ? " first" : ""}" data-n="${esc(p.name)}">
+      <button class="row" data-open="${esc(p.name)}"><span class="av">${off ? "–" : dn ? `<i>${num}</i>✓` : num}</span>
         <span><div class="nm">${esc(p.name)}${p.note ? `<span class="flag">🔑 код</span>` : ""}${todayNote(p.name) ? `<span class="flag fl2">📌 сегодня</span>` : ""}</div><div class="sub">${esc(p.address || contacts(p).join(", "))}</div></span></button>
-      <button class="tog" data-act="tog" data-n="${esc(p.name)}" aria-label="${off ? "Вернуть" : "Отметить"} ${esc(p.name)}">${off ? "↩" : "✓"}</button>
-      ${off ? "" : `<button class="handle" aria-label="Перетащить ${esc(p.name)}">⠿</button>`}
+      ${dn ? `<button class="tog" data-act="deliver" data-n="${esc(p.name)}" aria-label="Не доставлено ${esc(p.name)}">↩</button>` : `<button class="tog" data-act="tog" data-n="${esc(p.name)}" aria-label="${off ? "Вернуть" : "Убрать из маршрута"} ${esc(p.name)}">${off ? "↩" : "✓"}</button>`}
+      ${off || dn ? "" : `<button class="handle" aria-label="Перетащить ${esc(p.name)}">⠿</button>`}
     </li>`;
   }).join("");
   if (!drag) animateList(before);
@@ -505,6 +518,10 @@ function whoosh() {
     src.start(t0); src.stop(t0 + dur + .02);
   } catch (e) {}
 }
+function checkFinish() {
+  const route = CONTACTS.filter(p => !state.hidden.includes(p.name));
+  if (route.length && state.done.length && route.every(p => state.done.includes(p.name))) { setTimeout(bigCelebrate, 250); window.scrollTo({top: 0, behavior: "smooth"}); }
+}
 function celebrate(btn) {
   const r = btn.getBoundingClientRect();
   confetti(r.left + r.width / 2, r.top + r.height / 2, 36, 1.6);
@@ -521,7 +538,7 @@ function bigCelebrate() {
 // ===== Отмена последнего действия =====
 let undoSnap = null, undoTimer = null;
 function remember(label) {
-  undoSnap = JSON.stringify({order: state.order, hidden: state.hidden});
+  undoSnap = JSON.stringify({order: state.order, hidden: state.hidden, done: state.done});
   showToast(label);
 }
 function showToast(label, canUndo) {
@@ -535,7 +552,7 @@ function showToast(label, canUndo) {
 function undo() {
   if (!undoSnap) return;
   const u = JSON.parse(undoSnap);
-  state.order = u.order; state.hidden = u.hidden; undoSnap = null;
+  state.order = u.order; state.hidden = u.hidden; if (u.done) state.done = u.done; undoSnap = null;
   save(); render();
   const t = document.getElementById("toast"); if (t) t.classList.remove("open");
   clearTimeout(undoTimer);
@@ -596,6 +613,7 @@ async function submitForm() {
     const k = next.findIndex(x => x.name === old); next[k] = p;
     state.order = state.order.map(n => n === old ? name : n);
     state.hidden = state.hidden.map(n => n === old ? name : n);
+    state.done = state.done.map(n => n === old ? name : n);
     if (state.today && state.today[old] && old !== name) { state.today[name] = state.today[old]; delete state.today[old]; }
   } else {
     next.push(p);
@@ -610,7 +628,7 @@ async function deleteContact(btn) {
   if (!(await confirmBox(`Удалить ${name}?`, "Клиент пропадёт из списка. Это нельзя отменить.", "Да, удалить", true))) return;
   const ok = await saveContacts(CONTACTS.filter(x => x.name !== name), document.getElementById("ferr"));
   if (!ok) return;
-  state.order = state.order.filter(n => n !== name); state.hidden = state.hidden.filter(n => n !== name); if (state.today) delete state.today[name]; save();
+  state.order = state.order.filter(n => n !== name); state.hidden = state.hidden.filter(n => n !== name); state.done = state.done.filter(n => n !== name); if (state.today) delete state.today[name]; save();
   editing = null; closeDetail();
 }
 
@@ -684,14 +702,24 @@ document.addEventListener("click", e => {
   if (ct) { e.preventDefault(); copyAndGo(ct); return; }
   const a = e.target.closest("[data-act]");
   if (a) {
+    // ✓ в списке — убрать из сегодняшнего маршрута (вуш)
     if (a.dataset.act === "tog") {
-      const n = a.dataset.n, delivering = !state.hidden.includes(n);
-      remember(delivering ? `${n} · доставлено` : `${n} возвращён`);
-      if (delivering) { if (a.closest("#list")) whoosh(); else celebrate(a); }
-      if (delivering && state.trip && state.trip.name === n) state.trip = null;
+      const n = a.dataset.n, removing = !state.hidden.includes(n);
+      remember(removing ? `${n} убран из маршрута` : `${n} возвращён в маршрут`);
+      if (removing) whoosh();
       toggle(n);
       if (openName) closeDetail();
-      if (delivering && CONTACTS.every(p => state.hidden.includes(p.name))) { setTimeout(bigCelebrate, 250); window.scrollTo({top: 0, behavior: "smooth"}); }
+      checkFinish();
+    }
+    // «Доставлено» — остаётся на своём месте со своим номером
+    if (a.dataset.act === "deliver") {
+      const n = a.dataset.n, delivering = !state.done.includes(n);
+      remember(delivering ? `${n} · доставлено` : `${n} · снова в маршруте`);
+      if (delivering) celebrate(a);
+      if (delivering && state.trip && state.trip.name === n) state.trip = null;
+      markDone(n);
+      if (openName) closeDetail();
+      if (delivering) checkFinish();
     }
     if (a.dataset.act === "showall") { remember("Все возвращены"); state.hidden = []; save(); render(); }
     if (a.dataset.act === "undo") undo();
@@ -701,7 +729,7 @@ document.addEventListener("click", e => {
     if (a.dataset.act === "today") todayBox(a.dataset.n);
     if (a.dataset.act === "shuffle") { render(); const nb = openName ? detail.querySelector(".panel") : next.querySelector(".panel"); if (nb) nb.querySelector(".prev").animate?.([{opacity: .3}, {opacity: 1}], {duration: 300}); }
     if (a.dataset.act === "reset") { remember("Порядок сброшен"); state.order = defOrder(); save(); render(); }
-    if (a.dataset.act === "restart") { remember("Маршрут начат заново"); state.order = defOrder(); state.hidden = []; save(); render(); }
+    if (a.dataset.act === "restart") { remember("Маршрут начат заново"); state.order = defOrder(); state.hidden = []; state.done = []; save(); render(); }
     if (a.dataset.act === "back") closeDetail();
     if (a.dataset.act === "edit") openForm(a.dataset.n);
     if (a.dataset.act === "add") openForm("");
@@ -720,7 +748,7 @@ const HOLD_MS = 400;
 let pending = null, justDragged = false;
 list.addEventListener("pointerdown", e => {
   const li = e.target.closest(".item");
-  if (!li || li.classList.contains("off") || e.target.closest(".tog")) return;
+  if (!li || li.classList.contains("off") || li.classList.contains("delivered") || e.target.closest(".tog")) return;
   if (e.target.closest(".handle")) e.preventDefault();
   const id = e.pointerId, x0 = e.clientX, y0 = e.clientY, src = e.target;
   li.classList.add("holding");
@@ -745,7 +773,7 @@ list.addEventListener("pointermove", e => {
   }
   if (!drag || e.pointerId !== drag.id) return;
   const {li} = drag, y = e.clientY;
-  const ok = el => el && el.classList.contains("item") && !el.classList.contains("off");
+  const ok = el => el && el.classList.contains("item") && !el.classList.contains("off") && !el.classList.contains("delivered");
   const prev = li.previousElementSibling, nx = li.nextElementSibling;
   const before = li.offsetTop;
   // сосед плавно уезжает на освободившееся место
