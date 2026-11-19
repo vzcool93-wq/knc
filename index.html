@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KNC Маршрут</title>
+<meta name="theme-color" content="#64001b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+/* VOICE: fast, glanceable, used at a stop with cars waiting.
+   IDEA: traffic-signal colour coding — every kind of action has its own colour.
+   PICTURE: the next-stop card: blue = where, yellow = how to get in, green = send, black = done.
+   COLOUR and TYPE: neutral ground, brand burgundy only in the header; Oswald for names, Inter for text.
+   LAYOUT: one column; next stop, then the route list. */
+:root{color-scheme:light dark;--bg:light-dark(#f2f2f4,#0f0f12);--card:light-dark(#ffffff,#1c1c21);--ink:light-dark(#111114,#f4f4f6);--muted:light-dark(#686872,#a3a3ad);--line:light-dark(#dcdce2,#2e2e36);--soft:light-dark(#ececf0,#26262d);
+--brand:#64001b;--cream:#f3ece0;
+--map:#1a62d6;--mapbg:light-dark(#e8f0fe,#132744);--mapink:light-dark(#0b3f99,#a9c7ff);
+--go:#138a3c;--note:light-dark(#fff3c4,#3a3000);--notebd:#f2b705;--noteink:light-dark(#3d2e00,#ffe596)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Roboto,sans-serif;overflow-x:clip}
+.cond{font-family:"sans-serif-condensed","Roboto Condensed","Arial Narrow",sans-serif;font-stretch:condensed;text-transform:uppercase;letter-spacing:.05em}
+header{background:var(--brand);color:var(--cream);padding:10px max(4vw,14px);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hdr{display:contents}
+header h1{margin:0;font-size:22px;line-height:1;font-weight:600;flex:1}
+.park{text-decoration:none;color:inherit;display:flex;align-items:baseline;gap:8px;background:rgba(0,0,0,.25);border-radius:10px;padding:6px 10px}
+.park small{font-size:13px;opacity:.9}.park b{font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.boss{display:flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border-radius:10px;background:var(--cream);color:var(--brand);text-decoration:none;transition:transform .25s cubic-bezier(.22,1,.36,1)}.boss b{font-size:16px}.boss small{font-size:12px;opacity:.75}.boss:active{transform:scale(.95);transition-duration:.08s}
+main{max-width:640px;margin:0 auto;padding:12px max(3vw,10px) 40px}
+.sec{font-size:14px;color:var(--muted);margin:16px 2px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.sec span{flex:1}
+.panel{background:var(--card);border-radius:18px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.av{flex:none;width:40px;height:40px;border-radius:50%;background:var(--go);color:#fff;display:grid;place-items:center;font-weight:700;font-size:17px}
+.top .av{width:52px;height:52px;font-size:22px}
+.top h2{margin:0;font-size:38px;line-height:1;font-weight:600}
+.addr{display:flex;align-items:center;gap:10px;text-decoration:none;background:var(--mapbg);border:2px solid var(--map);border-radius:14px;padding:10px 12px;margin-bottom:10px;color:var(--mapink)}
+.addrrow{display:flex;gap:8px;margin-bottom:10px}.addrrow .addr{flex:1;margin:0}
+.pin{flex:none;width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:14px;border:2px solid var(--map);background:var(--card);color:var(--mapink);text-decoration:none;font-size:22px;transition:transform .25s cubic-bezier(.22,1,.36,1)}.pin small{font-size:11px;font-weight:600}.pin:active{transform:scale(.94);transition-duration:.08s}
+.addr .ic{flex:none;width:40px;height:40px;border-radius:10px;background:var(--map);color:#fff;display:grid;place-items:center;font-size:20px}
+.addr b{font-size:17px;overflow-wrap:anywhere;display:block}.addr small{display:block;font-size:12px;font-weight:600;opacity:.85}
+.note{background:var(--note);border:2px solid var(--notebd);color:var(--noteink);border-radius:14px;padding:10px 12px;margin-bottom:10px;white-space:pre-line;font-size:17px;line-height:1.5}
+.note strong{font-size:24px;font-weight:800;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.lbl{font-size:13px;font-weight:600;color:var(--go);margin:12px 2px 6px}
+.prev{display:flex;align-items:flex-start;gap:8px;font-size:14px;color:var(--muted);background:var(--soft);border-radius:12px;padding:8px 8px 8px 12px;margin-bottom:8px}.prev span{flex:1;padding-top:4px}
+.shuf{flex:none;width:40px;height:40px;border:0;border-radius:10px;background:var(--card);font-size:18px;cursor:pointer}
+.mins{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.min{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:68px;border-radius:14px;background:var(--go);color:#fff;text-decoration:none;font-weight:700;box-shadow:0 2px 0 rgba(0,0,0,.18)}
+.min b{font-family:"sans-serif-condensed","Roboto Condensed","Arial Narrow",sans-serif;font-stretch:condensed;font-size:30px;line-height:1}.min small{font-size:12px;opacity:.9}
+.min:active{transform:translateY(1px);box-shadow:none}
+.arrive{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px;margin-top:8px;border-radius:14px;background:#e8590c;color:#fff;text-decoration:none;box-shadow:0 2px 0 rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.22,1,.36,1)}
+.arrive b{font-size:19px}.arrive small{font-size:13px;opacity:.92;padding:0 10px;text-align:center}
+.arrive:active{transform:scale(.96);transition-duration:.08s}
+.btns{display:grid;gap:8px;margin-top:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;min-height:54px;border-radius:14px;font:inherit;font-weight:700;font-size:16px;text-decoration:none;border:2px solid var(--line);background:var(--soft);color:var(--ink);cursor:pointer;padding:0 12px;text-align:center}
+.btn.done{background:var(--ink);color:var(--bg);border-color:var(--ink);font-size:17px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:8px}
+a:focus-visible,button:focus-visible{outline:3px solid var(--map);outline-offset:2px}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.item{display:flex;align-items:center;gap:2px;border-radius:14px;background:var(--card);padding-right:2px;user-select:none;-webkit-user-select:none;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.item.first{outline:2px solid var(--go)}
+.row{display:flex;align-items:center;gap:12px;flex:1;min-height:60px;padding:8px 6px 8px 10px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.nm{font-family:"sans-serif-condensed","Roboto Condensed","Arial Narrow",sans-serif;font-stretch:condensed;font-weight:600;font-size:20px;letter-spacing:.03em;text-transform:uppercase;line-height:1.1}
+.sub{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flag{display:inline-block;margin-left:6px;font-size:12px;vertical-align:middle;background:var(--note);color:var(--noteink);border:1px solid var(--notebd);border-radius:6px;padding:0 5px;font-family:system-ui,Roboto,sans-serif;letter-spacing:0;text-transform:none;font-weight:600}
+.item.off{opacity:.4}.item.off .nm{text-decoration:line-through}.item.off .av{background:var(--muted)}
+.item.drag{position:relative;z-index:3;opacity:1;box-shadow:0 14px 34px rgba(0,0,0,.32);scale:1.03;transition:scale .2s ease,box-shadow .2s ease}
+.tog{flex:none;width:44px;height:44px;border:0;border-radius:12px;background:var(--soft);color:var(--ink);font-size:18px;font-weight:700;cursor:pointer}
+.handle{flex:none;width:44px;height:52px;border:0;background:none;color:var(--muted);font-size:24px;cursor:grab;touch-action:none}
+.tb{font:inherit;font-size:14px;font-weight:600;min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0;font-family:system-ui,Roboto,sans-serif}
+.empty{text-align:center;padding:22px 10px;color:var(--muted)}
+.back{font:inherit;font-weight:700;background:none;border:0;color:var(--map);padding:6px 0 12px;min-height:44px;cursor:pointer}
+#detail{display:none}
+.backup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:8px}
+.backup .btn{font-size:14px;min-height:46px;background:transparent;border-style:dashed;color:var(--muted)}
+.welcome h2{margin:6px 0;font-size:26px}.welcome p{margin:0}
+.road{display:flex;align-items:center;gap:10px;margin:-2px 0 12px;padding:8px 12px;border-radius:14px;background:var(--soft)}
+.road .home{font-size:24px;flex:none;transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.road .track{position:relative;flex:1;height:30px;background:repeating-linear-gradient(90deg,var(--muted) 0 10px,transparent 10px 18px) center/100% 2px no-repeat}
+.road .car{position:absolute;top:2px;line-height:0;filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) drop-shadow(0 1px 1px rgba(0,0,0,.3));transition:left 1s linear,transform 1s linear;animation:bump .5s ease-in-out infinite alternate}
+.road .eta{flex:none;font-weight:700;font-size:15px;min-width:76px;text-align:right;font-variant-numeric:tabular-nums}
+.road.arrived .car{transition:left 1.1s cubic-bezier(.22,1,.36,1),transform 1.1s cubic-bezier(.22,1,.36,1);animation:none}
+.road.arrived .home{transform:scale(1.25)}
+.road.arrived .eta{color:var(--go)}
+@keyframes bump{from{translate:0 0}to{translate:0 -2px}}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
+.confetti i{position:absolute;display:block;margin:-4px 0 0 -4px}
+.finish{text-align:center;padding:22px 16px;background:linear-gradient(180deg,light-dark(#eaf7ee,#12261a),var(--card));animation:enter .7s cubic-bezier(.22,1,.36,1)}
+.finish .big{font-size:56px;line-height:1;margin-bottom:6px;animation:pop 1s cubic-bezier(.22,1,.36,1)}
+.finish h2{margin:0 0 6px;font-size:32px;color:var(--go)}
+.finish p{margin:0 0 16px;color:var(--muted)}
+.finish .addrrow{text-align:left}
+@keyframes pop{0%{transform:scale(.2) rotate(-20deg);opacity:0}60%{transform:scale(1.25) rotate(8deg);opacity:1}100%{transform:none}}
+.today{display:block;width:100%;text-align:left;font:inherit;font-size:17px;font-weight:600;background:light-dark(#ffe3ec,#3a1424);color:light-dark(#7a0b33,#ffb3cb);border:2px solid #e0457b;border-radius:14px;padding:10px 12px;margin-bottom:10px;white-space:pre-line;cursor:pointer}
+.today small{display:block;font-size:12px;font-weight:700;opacity:.85}
+.pinbtn{font-size:19px;margin-right:6px}
+.flag.fl2{background:light-dark(#ffe3ec,#3a1424);color:light-dark(#7a0b33,#ffb3cb);border-color:#e0457b}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{font:inherit;font-size:14px;font-weight:600;min-height:40px;padding:0 12px;border-radius:20px;border:1px solid var(--line);background:var(--soft);color:var(--ink);cursor:pointer}
+.chip:active{transform:scale(.95)}
+#tnote{width:100%;font:inherit;font-size:16px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin-bottom:12px;resize:vertical}
+#toast{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));z-index:40;display:flex;align-items:center;gap:12px;width:min(92vw,440px);padding:8px 8px 8px 16px;border-radius:16px;background:var(--ink);color:var(--bg);box-shadow:0 12px 30px rgba(0,0,0,.3);transform:translate(-50%,140%);opacity:0;transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .3s ease}
+#toast.open{transform:translate(-50%,0);opacity:1}
+#toast span{flex:1;font-weight:600}
+#toast button{font:inherit;font-weight:800;min-height:44px;padding:0 16px;border:0;border-radius:12px;background:#f2b705;color:#1a1400;cursor:pointer}
+.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0);transition:background .25s ease}
+.modal.open{background:rgba(0,0,0,.45)}
+.sheet{width:100%;max-width:380px;background:var(--card);color:var(--ink);border-radius:20px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.35);opacity:0;transform:translateY(16px) scale(.96);transition:opacity .25s ease,transform .3s cubic-bezier(.22,1,.36,1)}
+.modal.open .sheet{opacity:1;transform:none}
+.sheet h3{margin:0 0 6px;font-size:21px;line-height:1.2}.sheet p{margin:0 0 16px;color:var(--muted)}
+.mbtns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.mok{background:var(--go);border-color:var(--go);color:#fff}.mdanger{background:#d93025;border-color:#d93025;color:#fff}
+.top h2{flex:1}
+.more{flex:none;width:44px;height:44px;margin:-6px -6px 0 0;align-self:flex-start;border:0;border-radius:12px;background:var(--soft);color:var(--ink);font-size:24px;line-height:1;cursor:pointer;transition:transform .25s cubic-bezier(.22,1,.36,1)}.more:active{transform:scale(.92);transition-duration:.08s}
+.addnew{width:100%;margin-top:12px;background:var(--card);border-style:dashed}
+.sync{color:var(--muted);font-size:13px;text-align:center;margin:10px 0 0;min-height:1em}
+.form h2{margin:0 0 12px;font-size:26px;line-height:1.1}
+.fl{display:block;margin-bottom:12px}.fl span{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.fl input,.fl textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-height:48px}
+.fl textarea{resize:vertical}.fl input:focus,.fl textarea:focus{outline:3px solid var(--map);outline-offset:0}
+.fl small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.err{color:#d93025;font-weight:600;min-height:1em;margin:4px 0 8px}
+.btn.save{width:100%;background:var(--go);border-color:var(--go);color:#fff;font-size:18px}
+.btn.del{width:100%;margin-top:10px;background:transparent;border-color:#d93025;color:#d93025}
+/* ===== Плавность ===== */
+@keyframes enter{from{opacity:0;transform:translateY(22px) scale(.97)}60%{opacity:1}to{opacity:1;transform:none}}
+@keyframes slidein{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:none}}
+.enter{animation:enter .7s cubic-bezier(.22,1,.36,1)}
+#detail.show{animation:slidein .55s cubic-bezier(.22,1,.36,1)}
+#home.show{animation:enter .55s cubic-bezier(.22,1,.36,1)}
+.min,.btn,.tog,.tb,.row,.addr{transition:transform .25s cubic-bezier(.22,1,.36,1),background-color .3s ease,opacity .3s ease}
+.min:active,.btn:active,.tog:active,.tb:active,.addr:active{transform:scale(.96);transition-duration:.08s}
+.item{transition:box-shadow .2s ease}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1 class="cond">Keer Noon Club</h1>
+  <span id="hdr" class="hdr"></span>
+</header>
+<main>
+  <div id="home">
+    <div class="sec cond"><span>Следующий</span></div>
+    <div id="next"></div>
+    <div class="sec cond" id="bar"></div>
+    <ul id="list" class="list"></ul>
+    <button class="btn addnew" data-act="add">＋ Добавить клиента</button>
+    <div class="backup"><button class="btn" data-act="export">💾 Сохранить копию</button><label class="btn">📂 Восстановить<input type="file" id="importFile" accept=".json,application/json" hidden></label></div>
+    <p id="syncNote" class="sync"></p>
+  </div>
+  <div id="detail"></div>
+</main>
+<script>
+{
+// ===== СПИСОК КОНТАКТОВ =====
+// name — в приложении, greet — имя в сообщении
+// contact: @ник → Telegram, +номер → WhatsApp; несколько — массивом
+// Запасной список (если база недоступна). Основные данные — в базе страницы.
+const DEFAULT = []; // данные клиентов НЕ хранятся в коде — только на телефоне
+let CONTACTS = DEFAULT.map(p => ({...p}));
+
+const defOrder = () => CONTACTS.map(p => p.name);
+// если на телефоне сохранились кириллические имена — вернуть к латинице
+const RENAME = {"Анастасия": "Anastasia", "Вова": "Vova", "Анна": "Ann", "Роман": "Roman", "Оксем": "Oksem", "Виктория": "Viktoria", "Андрей": "Andrew", "Катрин": "Katrin"};
+// Парковка
+// Парковка и начальник — тоже НЕ в коде: хранятся на телефоне и в файле-копии
+const SKEY = "knc-settings-v1";
+let SETTINGS = {};
+try { SETTINGS = JSON.parse(localStorage.getItem(SKEY) || "{}") || {}; } catch (e) {}
+const saveSettings = () => { try { localStorage.setItem(SKEY, JSON.stringify(SETTINGS)); } catch (e) {} };
+const parkNav = () => SETTINGS.parkLat ? `https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate&destination=${SETTINGS.parkLat},${SETTINGS.parkLng}` : "";
+const parkMap = () => SETTINGS.parkMap || (SETTINGS.parkLat ? `https://www.google.com/maps/search/?api=1&query=${SETTINGS.parkLat},${SETTINGS.parkLng}` : "");
+function renderHeader() {
+  const h = document.getElementById("hdr");
+  h.innerHTML = (SETTINGS.parkCode || SETTINGS.parkLat ? `<a class="park" href="${esc(parkNav() || "#")}" target="_blank" rel="noopener"><small>🅿️ Парковка</small><b>${esc(SETTINGS.parkCode || "")}</b></a>` : "")
+    + (SETTINGS.bossTg ? `<a class="boss" href="${esc(chatLink(SETTINGS.bossTg))}" target="_blank" rel="noopener"><span>💬</span><b>${esc(SETTINGS.bossName || SETTINGS.bossTg)}</b></a>` : "");
+}
+const MINUTES = [3, 5, 7, 10, 13, 15];
+const KEY = "contacts-state-v1";
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const contacts = p => [].concat(p.contact || []);
+const plural = n => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? "минуту" : a >= 2 && a <= 4 && (b < 12 || b > 14) ? "минуты" : "минут"; };
+// ===== Варианты сообщений (n — имя, t — «5 минут») =====
+const TEMPLATES = [
+  (n, t) => `${n}, здравствуйте! Еду к вам с заказом, буду примерно через ${t}.`,
+  (n, t) => `Здравствуйте, ${n}! Ваш заказ уже в пути — буду у вас примерно через ${t}.`,
+  (n, t) => `${n}, здравствуйте! Направляюсь к вам, ориентировочно буду через ${t}.`,
+  (n, t) => `Здравствуйте, ${n}! Буду у вас примерно через ${t}, ожидайте, пожалуйста.`,
+  (n, t) => `${n}, здравствуйте! Уже еду в вашу сторону, буду примерно через ${t}. До встречи!`,
+  (n, t) => `Здравствуйте, ${n}! Везу ваш заказ, прибуду примерно через ${t}.`,
+  (n, t) => `${n}, здравствуйте! Подъезжаю к вам, буду примерно через ${t}.`,
+  (n, t) => `Здравствуйте, ${n}! Сообщаю, что буду у вас с заказом примерно через ${t}.`,
+  (n, t) => `${n}, здравствуйте! Ваш заказ едет к вам — буду примерно через ${t}.`,
+  (n, t) => `Здравствуйте, ${n}! Еду к вам, буду примерно через ${t}.`,
+  (n, t) => `${n}, здравствуйте! Ваш заказ уже в дороге, буду примерно через ${t}.`,
+  (n, t) => `Здравствуйте, ${n}! Я уже в пути к вам, рассчитываю быть через ${t}.`
+];
+// ===== «Я на месте» — короткие варианты =====
+const ARRIVE = [
+  n => `${n}, я на месте.`,
+  n => `${n}, я прибыл.`,
+  n => `${n}, я на месте, жду вас.`,
+  n => `${n}, я подъехал.`,
+  n => `${n}, я у вашего дома.`,
+  n => `${n}, прибыл, ожидаю вас.`,
+  n => `${n}, я внизу.`,
+  n => `${n}, я на месте с вашим заказом.`
+];
+let lastTpl = -1;
+const pickTpl = () => { let k; do { k = Math.floor(Math.random() * TEMPLATES.length); } while (k === lastTpl && TEMPLATES.length > 1); lastTpl = k; return k; };
+const message = (p, m, k) => TEMPLATES[k](p.greet || p.name, `${m} ${plural(m)}`);
+// Ссылка на чат; если есть text — сообщение уже будет в поле ввода
+const chatLink = (c, text) => {
+  c = (c || "").trim();
+  const t = text ? "?text=" + encodeURIComponent(text) : "";
+  if (c.startsWith("@")) return "https://t.me/" + c.slice(1) + t;
+  if (c.startsWith("+")) return "https://wa.me/" + c.replace(/\D/g, "") + t;
+  if (c.startsWith("http")) return c;
+  return null;
+};
+// Коды и номера квартир в заметке — крупно
+const hl = t => esc(t).replace(/(\d{3,}|\b\d{1,3}[A-ZА-Я]\b)/g, "<strong>$1</strong>");
+// Навигация: если в ссылке есть точные координаты — едем по ним, иначе по адресу
+const navLink = p => {
+  const m = (p.maps || "").match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  const dest = m ? m[1] + "," + m[2] : p.address;
+  return "https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate&destination=" + encodeURIComponent(dest);
+};
+const app = c => c.startsWith("+") ? "WhatsApp" : "Telegram";
+const mapsLink = p => p.maps || "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.address);
+
+let state = {order: defOrder(), hidden: [], today: {}};
+try {
+  const st = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (st && Array.isArray(st.order)) state = {order: st.order, hidden: Array.isArray(st.hidden) ? st.hidden : [], today: st.today && typeof st.today === "object" ? st.today : {}, trip: st.trip && st.trip.name && Date.now() - st.trip.start < 6 * 3600000 ? st.trip : null};
+} catch (e) {}
+state.order = state.order.map(n => RENAME[n] || n);
+state.hidden = state.hidden.map(n => RENAME[n] || n);
+// Заметки на сегодня: хранятся с датой и сами исчезают на следующий день
+const dayKey = () => { const d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); };
+const todayNote = name => { const t = (state.today || {})[name]; return t && t.date === dayKey() ? t.text : ""; };
+state.today = Object.fromEntries(Object.entries(state.today || {}).filter(([, t]) => t && t.date === dayKey()));
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+const isOff = p => state.hidden.includes(p.name);
+
+function ordered() {
+  const rank = n => { const k = state.order.indexOf(n); return k < 0 ? 999 : k; };
+  return CONTACTS.map((p, i) => ({...p, i})).sort((a, b) => (isOff(a) - isOff(b)) || rank(a.name) - rank(b.name) || a.i - b.i);
+}
+function toggle(name) {
+  const k = state.hidden.indexOf(name);
+  if (k < 0) state.hidden.push(name); else state.hidden.splice(k, 1);
+  save(); render();
+}
+
+// Карточка человека: адрес, заметка, кнопки минут, отметка
+function panel(p) {
+  const cs = contacts(p), main = cs[0];
+  const off = isOff(p);
+  const k = pickTpl();
+  return `<div class="panel">
+    <div class="top"><span class="av">${esc((p.name[0] || "?").toUpperCase())}</span><h2 class="cond">${esc(p.name)}</h2><button class="more pinbtn" data-act="today" data-n="${esc(p.name)}" aria-label="Заметка на сегодня">📌</button><button class="more" data-act="edit" data-n="${esc(p.name)}" aria-label="Изменить данные ${esc(p.name)}">⋯</button></div>
+    ${p.address ? `<div class="addrrow"><a class="addr" href="${esc(navLink(p))}" target="_blank" rel="noopener"><span class="ic">🧭</span><span><small>Поехали · навигация</small><b>${esc(p.address)}</b></span></a><a class="pin" href="${esc(mapsLink(p))}" target="_blank" rel="noopener" aria-label="Место на карте">📍<small>карта</small></a></div>` : ""}
+    ${todayNote(p.name) ? `<button class="today" data-act="today" data-n="${esc(p.name)}"><small>📌 Сегодня</small>${esc(todayNote(p.name))}</button>` : ""}
+    ${p.note ? `<div class="note">${hl(p.note)}</div>` : ""}
+    ${main ? `<div class="lbl">✉ Через сколько минут буду — откроется ${app(main)} с текстом${cs.length > 1 ? " для " + esc(main) : ""}</div>
+    <div class="prev"><span>${esc(TEMPLATES[k](p.greet || p.name, "… минут"))}</span><button class="shuf" data-act="shuffle" aria-label="Другой вариант">🔀</button></div>
+    <div class="mins">${MINUTES.map(m => `<a class="min" data-act="trip" data-n="${esc(p.name)}" data-m="${m}" href="${esc(chatLink(main, message(p, m, k)))}" target="_blank" rel="noopener"><b>${m}</b><small>мин</small></a>`).join("")}</div>` : ""}
+    ${main ? (() => { const t = ARRIVE[Math.floor(Math.random() * ARRIVE.length)](p.greet || p.name); return `<a class="arrive" data-act="arrived" data-n="${esc(p.name)}" href="${esc(chatLink(main, t))}" target="_blank" rel="noopener"><b>🏁 Я на месте</b><small>${esc(t)}</small></a>`; })() : ""}
+    <div class="btns">
+      <div class="two">
+        ${main ? `<a class="btn" href="${esc(chatLink(main))}" target="_blank" rel="noopener">💬 Чат</a>` : ""}
+        <button class="btn done" data-act="tog" data-n="${esc(p.name)}">${off ? "↩ Вернуть" : "✓ Доставлено"}</button>
+      </div>
+      ${cs.slice(1).map(c => `<a class="btn" href="${esc(chatLink(c))}" target="_blank" rel="noopener">💬 Второй контакт · ${esc(c)}</a>`).join("")}
+    </div>
+  </div>`;
+}
+
+const home = document.getElementById("home"), detail = document.getElementById("detail");
+const next = document.getElementById("next"), bar = document.getElementById("bar"), list = document.getElementById("list");
+let openName = null;
+let editing = null; // имя редактируемого или "" для нового
+let drag = null;
+
+// Запоминаем, где был каждый человек, чтобы плавно переехать на новое место
+let lastNext = null;
+const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+function snapshot() {
+  const m = {};
+  list.querySelectorAll(".item").forEach(li => m[li.dataset.n] = {top: li.getBoundingClientRect().top, off: li.classList.contains("off")});
+  return m;
+}
+function animateList(before) {
+  if (reduce) return;
+  list.querySelectorAll(".item").forEach(li => {
+    const b = before[li.dataset.n];
+    if (!b) return;
+    const dy = b.top - li.getBoundingClientRect().top;
+    const nowOff = li.classList.contains("off");
+    if (!dy && b.off === nowOff) return;
+    li.style.transition = "none";
+    li.style.transform = `translateY(${dy}px)`;
+    if (b.off !== nowOff) li.style.opacity = b.off ? ".4" : "1";
+    li.getBoundingClientRect(); // применить начальное положение
+    li.style.transition = "transform .75s cubic-bezier(.22,1,.36,1), opacity .75s ease";
+    li.style.transform = "";
+    li.style.opacity = "";
+    li.addEventListener("transitionend", () => { li.style.transition = ""; }, {once: true});
+  });
+}
+
+function render() {
+  const before = snapshot();
+  const all = ordered();
+  const active = all.filter(p => !isOff(p));
+  const offCount = all.length - active.length;
+  next.innerHTML = !all.length ? `<div class="panel empty welcome"><div style="font-size:44px">📦</div><h2 class="cond">Список пуст</h2><p>Нажми «📂 Восстановить» внизу и выбери файл с контактами — или добавь клиента вручную.</p></div>` : active.length ? panel(active[0]) : `<div class="panel finish">
+      <div class="big">🎉</div>
+      <h2 class="cond">Маршрут завершён!</h2>
+      <p>Все доставлено. Отличная работа!</p>
+      ${SETTINGS.parkLat ? `<div class="addrrow"><a class="addr" href="${esc(parkNav())}" target="_blank" rel="noopener"><span class="ic">🅿️</span><span><small>Поехали · навигация</small><b>Парковка${SETTINGS.parkCode ? " · код " + esc(SETTINGS.parkCode) : ""}</b></span></a><a class="pin" href="${esc(parkMap())}" target="_blank" rel="noopener" aria-label="Парковка на карте">📍<small>карта</small></a></div>` : ""}
+      <button class="btn" data-act="restart">↺ Начать новый маршрут</button>
+    </div>`;
+  const nextName = active.length ? active[0].name : "";
+  if (nextName !== lastNext && lastNext !== null) next.firstElementChild.classList.add("enter");
+  lastNext = nextName;
+  const def = defOrder();
+  const changed = all.filter(p => !isOff(p)).map(p => p.name).join() !== def.filter(n => !state.hidden.includes(n)).join();
+  bar.innerHTML = `<span>Маршрут · ${active.length} из ${all.length}</span>${changed ? `<button class="tb" data-act="reset">↺ Исходный порядок</button>` : ""}${offCount ? `<button class="tb" data-act="showall">Вернуть всех</button>` : ""}`;
+  let num = 0;
+  list.innerHTML = all.map(p => {
+    const off = isOff(p);
+    return `<li class="item${off ? " off" : ""}${!off && num === 0 ? " first" : ""}" data-n="${esc(p.name)}">
+      <button class="row" data-open="${esc(p.name)}"><span class="av">${off ? "✓" : ++num}</span>
+        <span><div class="nm">${esc(p.name)}${p.note ? `<span class="flag">🔑 код</span>` : ""}${todayNote(p.name) ? `<span class="flag fl2">📌 сегодня</span>` : ""}</div><div class="sub">${esc(p.address || contacts(p).join(", "))}</div></span></button>
+      <button class="tog" data-act="tog" data-n="${esc(p.name)}" aria-label="${off ? "Вернуть" : "Отметить"} ${esc(p.name)}">${off ? "↩" : "✓"}</button>
+      ${off ? "" : `<button class="handle" aria-label="Перетащить ${esc(p.name)}">⠿</button>`}
+    </li>`;
+  }).join("");
+  if (!drag) animateList(before);
+  if (openName && editing === null) {
+    const p = all.find(x => x.name === openName);
+    detail.innerHTML = `<button class="back" data-act="back">← Назад к маршруту</button>${p ? panel(p) : ""}`;
+  }
+}
+
+// ===== Окно подтверждения =====
+function confirmBox(title, text, okLabel, danger) {
+  return new Promise(resolve => {
+    const wrap = document.createElement("div");
+    wrap.className = "modal";
+    wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mt">
+      <h3 id="mt">${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ""}
+      <div class="mbtns"><button class="btn" data-m="no">Отмена</button><button class="btn ${danger ? "mdanger" : "mok"}" data-m="yes">${esc(okLabel)}</button></div>
+    </div>`;
+    document.body.appendChild(wrap);
+    requestAnimationFrame(() => wrap.classList.add("open"));
+    const close = v => { wrap.classList.remove("open"); setTimeout(() => wrap.remove(), 250); resolve(v); };
+    wrap.addEventListener("click", e => {
+      const b = e.target.closest("[data-m]");
+      if (b) { e.stopPropagation(); close(b.dataset.m === "yes"); }
+      else if (e.target === wrap) close(false);
+    });
+    wrap.querySelector("[data-m=yes]").focus();
+  });
+}
+
+// ===== Заметка на сегодня =====
+const PRESETS = ["💶 Взять оплату", "💳 Оплата картой / MB Way", "💵 Наличные, нужна сдача", "✅ Уже оплачено", "Оставить у двери", "Позвонить заранее", "Не звонить в домофон", "Передать лично в руки", "Приехать позже"];
+function todayBox(name) {
+  const wrap = document.createElement("div");
+  wrap.className = "modal";
+  wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tt">
+    <h3 id="tt">📌 ${esc(name)} · на сегодня</h3>
+    <p>Видно только сегодня, завтра исчезнет само.</p>
+    <div class="presets">${PRESETS.map(t => `<button class="chip" data-p="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+    <textarea id="tnote" rows="3" placeholder="Или напиши своё">${esc(todayNote(name))}</textarea>
+    <div class="mbtns">${todayNote(name) ? `<button class="btn" data-m="clear">Убрать</button>` : `<button class="btn" data-m="no">Отмена</button>`}<button class="btn mok" data-m="save">Сохранить</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  requestAnimationFrame(() => wrap.classList.add("open"));
+  const ta = wrap.querySelector("#tnote");
+  const close = () => { wrap.classList.remove("open"); setTimeout(() => wrap.remove(), 250); };
+  wrap.addEventListener("click", e => {
+    e.stopPropagation();
+    const pr = e.target.closest("[data-p]");
+    if (pr) { ta.value = ta.value.trim() ? ta.value.trim() + "\n" + pr.dataset.p : pr.dataset.p; return; }
+    const b = e.target.closest("[data-m]");
+    if (e.target === wrap || (b && b.dataset.m === "no")) return close();
+    if (!b) return;
+    state.today = state.today || {};
+    const text = b.dataset.m === "save" ? ta.value.trim() : "";
+    if (text) state.today[name] = {text, date: dayKey()}; else delete state.today[name];
+    save(); close(); render();
+  });
+}
+
+// ===== Машинка в пути =====
+// state.trip = {name, start, mins, arrived}
+const tripOf = name => state.trip && state.trip.name === name ? state.trip : null;
+function tripPct(t) {
+  if (t.arrived) return 100;
+  const p = (Date.now() - t.start) / (t.mins * 60000) * 100;
+  return Math.max(0, Math.min(94, p)); // до «Я на месте» стоит чуть перед домом
+}
+function etaText(t) {
+  if (t.arrived) return "на месте ✓";
+  const left = Math.ceil((t.start + t.mins * 60000 - Date.now()) / 60000);
+  return left > 0 ? `≈ ${left} мин` : "почти на месте";
+}
+function roadHTML(name) {
+  const t = tripOf(name);
+  if (!t) return "";
+  const pct = tripPct(t);
+  return `<div class="road${t.arrived ? " arrived" : ""}" data-trip="${esc(name)}">
+    <span class="home">🏠</span>
+    <div class="track"><span class="car" style="left:${100 - pct}%;transform:translateX(-${100 - pct}%)"><svg viewBox="0 0 64 30" width="52" height="25" aria-hidden="true"><path d="M3 21 L4 15 Q6 11 12 9.5 L19 3.5 Q21 2 25 2 L56 2 Q60 2 61 6 L62 20 Q62 23 59 23 L5 23 Q3 23 3 21Z" fill="#111"/><path d="M20 4.2 L13.5 9.6 L24 9.6 L24 4.2Z M26 4.2 L26 9.6 L38 9.6 L38 4.2Z M40 4.2 L40 9.6 L51 9.6 L51 4.2Z M53 4.2 L53 9.6 L59.5 9.6 L59 5 Q58.6 4.2 57.5 4.2Z" fill="#8fb3d9" opacity=".9"/><rect x="24" y="0.6" width="30" height="1.4" rx=".7" fill="#555"/><rect x="5" y="15" width="3" height="2" rx="1" fill="#ffe8a3"/><rect x="59" y="13" width="2.4" height="3" rx="1" fill="#d33"/><line x1="25" y1="12" x2="25" y2="21" stroke="#2a2a2a" stroke-width=".8"/><line x1="39" y1="12" x2="39" y2="21" stroke="#2a2a2a" stroke-width=".8"/><circle cx="14" cy="23" r="5" fill="#222"/><circle cx="14" cy="23" r="2.3" fill="#aaa"/><circle cx="51" cy="23" r="5" fill="#222"/><circle cx="51" cy="23" r="2.3" fill="#aaa"/></svg></span></div>
+    <span class="eta">${etaText(t)}</span>
+  </div>`;
+}
+function tickRoads() {
+  document.querySelectorAll(".road").forEach(r => {
+    const t = tripOf(r.dataset.trip);
+    if (!t) return;
+    const pct = tripPct(t);
+    const car = r.querySelector(".car");
+    car.style.left = (100 - pct) + "%";
+    car.style.transform = `translateX(-${100 - pct}%)`;
+    r.querySelector(".eta").textContent = etaText(t);
+    r.classList.toggle("arrived", !!t.arrived);
+  });
+}
+// машинка отключена
+function startTrip(name, mins) { state.trip = {name, start: Date.now(), mins: +mins, arrived: false}; save(); setTimeout(() => { render(); }, 50); }
+function arriveTrip(name) {
+  if (!state.trip || state.trip.name !== name) state.trip = {name, start: Date.now() - 60000, mins: 1, arrived: false};
+  state.trip.arrived = true; save();
+  tickRoads();
+}
+
+// ===== Праздник: конфетти и короткая мелодия =====
+const COLORS = ["#64001b", "#f3ece0", "#138a3c", "#f2b705", "#1a62d6", "#e0457b", "#e8590c"];
+function confetti(x, y, count, spread) {
+  if (reduce) return;
+  const box = document.createElement("div");
+  box.className = "confetti";
+  document.body.appendChild(box);
+  for (let i = 0; i < count; i++) {
+    const c = document.createElement("i");
+    const size = 6 + Math.random() * 7;
+    c.style.cssText = `left:${x}px;top:${y}px;width:${size}px;height:${size * (Math.random() < .5 ? 1 : .45)}px;background:${COLORS[i % COLORS.length]};border-radius:${Math.random() < .3 ? "50%" : "2px"}`;
+    box.appendChild(c);
+    const ang = -Math.PI / 2 + (Math.random() - .5) * spread;
+    const v = 140 + Math.random() * 260;
+    const dx = Math.cos(ang) * v, dy = Math.sin(ang) * v;
+    c.animate([
+      {transform: "translate(0,0) rotate(0deg)", opacity: 1},
+      {transform: `translate(${dx}px,${dy}px) rotate(${Math.random() * 360}deg)`, opacity: 1, offset: .45},
+      {transform: `translate(${dx * 1.3}px,${dy + 380}px) rotate(${Math.random() * 720}deg)`, opacity: 0}
+    ], {duration: 1300 + Math.random() * 900, easing: "cubic-bezier(.2,.7,.4,1)", fill: "forwards"});
+  }
+  setTimeout(() => box.remove(), 2600);
+}
+let actx = null;
+function chime(notes) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = actx.currentTime;
+    notes.forEach(([f, at, len]) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = "triangle"; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t0 + at);
+      g.gain.linearRampToValueAtTime(.18, t0 + at + .02);
+      g.gain.exponentialRampToValueAtTime(.001, t0 + at + len);
+      o.connect(g).connect(actx.destination);
+      o.start(t0 + at); o.stop(t0 + at + len + .05);
+    });
+  } catch (e) {}
+}
+function celebrate(btn) {
+  const r = btn.getBoundingClientRect();
+  confetti(r.left + r.width / 2, r.top + r.height / 2, 36, 1.6);
+  chime([[784, 0, .18], [1047, .12, .35]]);
+}
+function bigCelebrate() {
+  const w = window.innerWidth;
+  confetti(w * .2, window.innerHeight * .35, 70, 1.4);
+  setTimeout(() => confetti(w * .8, window.innerHeight * .35, 70, 1.4), 180);
+  setTimeout(() => confetti(w * .5, window.innerHeight * .25, 90, 2.2), 380);
+  chime([[523, 0, .2], [659, .15, .2], [784, .3, .2], [1047, .45, .6], [784, .75, .15], [1047, .9, .8]]);
+}
+
+// ===== Отмена последнего действия =====
+let undoSnap = null, undoTimer = null;
+function remember(label) {
+  undoSnap = JSON.stringify({order: state.order, hidden: state.hidden});
+  showToast(label);
+}
+function showToast(label, canUndo) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.innerHTML = `<span>${esc(label)}</span>${canUndo === false || (canUndo === undefined && !undoSnap) ? "" : `<button data-act="undo">Отменить</button>`}`;
+  requestAnimationFrame(() => t.classList.add("open"));
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { t.classList.remove("open"); undoSnap = null; }, 6000);
+}
+function undo() {
+  if (!undoSnap) return;
+  const u = JSON.parse(undoSnap);
+  state.order = u.order; state.hidden = u.hidden; undoSnap = null;
+  save(); render();
+  const t = document.getElementById("toast"); if (t) t.classList.remove("open");
+  clearTimeout(undoTimer);
+}
+
+// ===== Редактирование контактов =====
+const placeFromLink = url => { const m = (url || "").match(/\/maps\/place\/([^/@?]+)/); return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : ""; };
+function formHTML(p) {
+  const isNew = !p; p = p || {};
+  const f = (id, label, val, hint, multi) => `<label class="fl"><span>${label}</span>${multi ? `<textarea id="${id}" rows="3">${esc(val || "")}</textarea>` : `<input id="${id}" value="${esc(val || "")}" autocomplete="off">`}${hint ? `<small>${hint}</small>` : ""}</label>`;
+  return `<button class="back" data-act="cancel">← Отмена</button>
+  <form class="panel form" id="cform">
+    <h2 class="cond">${isNew ? "Новый клиент" : "Изменить · " + esc(p.name)}</h2>
+    ${f("f_name", "Имя в приложении *", p.name, "Например: Maria")}
+    ${f("f_greet", "Имя в сообщении", p.greet, "Как обращаться: Мария. Пусто — как в приложении")}
+    ${f("f_contact", "Telegram или телефон", contacts(p).join("\n"), "@ник или +351… Несколько — каждый с новой строки", true)}
+    ${f("f_maps", "Ссылка Google Maps", p.maps, "Вставь ссылку «Поделиться» из Google Maps")}
+    ${f("f_address", "Адрес", p.address, "Можно пусто — возьму из ссылки")}
+    ${f("f_note", "Заметка: код, квартира, вход", p.note, "", true)}
+    <p class="err" id="ferr"></p>
+    <button class="btn save" type="submit">💾 Сохранить</button>
+    ${isNew ? "" : `<button class="btn del" type="button" data-act="del" data-n="${esc(p.name)}">🗑 Удалить клиента</button>`}
+  </form>`;
+}
+function openForm(name) {
+  editing = name;
+  const p = name ? CONTACTS.find(x => x.name === name) : null;
+  openName = name || "__form__";
+  home.style.display = "none"; detail.style.display = "block";
+  detail.innerHTML = formHTML(p);
+  detail.classList.remove("show"); void detail.offsetWidth; detail.classList.add("show");
+  window.scrollTo(0, 0);
+}
+function closeForm(showName) {
+  editing = null;
+  if (showName) { openName = null; openDetail(showName); } else closeDetail();
+}
+async function submitForm() {
+  const v = id => document.getElementById(id).value.trim();
+  const err = document.getElementById("ferr");
+  const name = v("f_name");
+  if (!name) { err.textContent = "Впиши имя"; return; }
+  if (CONTACTS.some(x => x.name === name && x.name !== editing)) { err.textContent = "Такое имя уже есть — добавь букву или цифру"; return; }
+  const cs = v("f_contact").split(/\n+/).map(x => x.trim()).filter(Boolean).map(x => /^[A-Za-z0-9_]{4,}$/.test(x) ? "@" + x : x);
+  const maps = v("f_maps");
+  const address = v("f_address") || placeFromLink(maps);
+  if (!address && !maps) { err.textContent = "Нужен адрес или ссылка на карту"; return; }
+  const p = {name};
+  if (v("f_greet")) p.greet = v("f_greet");
+  if (cs.length) p.contact = cs.length === 1 ? cs[0] : cs;
+  if (address) p.address = address;
+  if (maps) p.maps = maps;
+  if (v("f_note")) p.note = v("f_note");
+  const old = editing;
+  if (old && !(await confirmBox("Сохранить изменения?", `Данные клиента ${old}${old !== name ? " → " + name : ""} будут заменены.`, "Да, сохранить"))) return;
+  const next = CONTACTS.map(x => ({...x}));
+  if (old) {
+    const k = next.findIndex(x => x.name === old); next[k] = p;
+    state.order = state.order.map(n => n === old ? name : n);
+    state.hidden = state.hidden.map(n => n === old ? name : n);
+    if (state.today && state.today[old] && old !== name) { state.today[name] = state.today[old]; delete state.today[old]; }
+  } else {
+    next.push(p);
+  }
+  const ok = await saveContacts(next, err);
+  if (!ok) return;
+  save();
+  closeForm(name);
+}
+async function deleteContact(btn) {
+  const name = btn.dataset.n;
+  if (!(await confirmBox(`Удалить ${name}?`, "Клиент пропадёт из списка. Это нельзя отменить.", "Да, удалить", true))) return;
+  const ok = await saveContacts(CONTACTS.filter(x => x.name !== name), document.getElementById("ferr"));
+  if (!ok) return;
+  state.order = state.order.filter(n => n !== name); state.hidden = state.hidden.filter(n => n !== name); if (state.today) delete state.today[name]; save();
+  editing = null; closeDetail();
+}
+
+// ===== Копия контактов: сохранить / восстановить =====
+function exportBackup() {
+  const data = JSON.stringify({app: "knc", savedAt: new Date().toISOString(), settings: SETTINGS, list: CONTACTS}, null, 1);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([data], {type: "application/json"}));
+  const d = new Date();
+  a.download = `knc-kontakty-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  showToast("Копия сохранена в Загрузки", false);
+}
+document.addEventListener("change", async e => {
+  if (e.target.id !== "importFile") return;
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    const list = Array.isArray(j) ? j : j.list;
+    if (!Array.isArray(list) || !list.every(p => p && typeof p.name === "string")) throw 0;
+    if (CONTACTS.length && !(await confirmBox("Заменить список?", `Сейчас клиентов: ${CONTACTS.length}. В файле: ${list.length}. Текущий список заменится.`, "Да, заменить"))) return;
+    await saveContacts(list.map(p => ({...p})));
+    if (j.settings && typeof j.settings === "object") { SETTINGS = {...j.settings}; saveSettings(); renderHeader(); }
+    state.order = list.map(p => p.name); state.hidden = []; save(); render();
+    showToast(`Загружено клиентов: ${list.length}`, false);
+  } catch (err) {
+    showToast("Это не файл с контактами", false);
+  }
+});
+
+// ===== Хранение на телефоне (без интернета и без Claude) =====
+const LKEY = "contacts-list-v1";
+const syncNote = document.getElementById("syncNote");
+try { const saved = JSON.parse(localStorage.getItem(LKEY) || "null"); if (Array.isArray(saved) && saved.length) CONTACTS = saved; } catch (e) {}
+async function saveContacts(list, errEl) {
+  try { localStorage.setItem(LKEY, JSON.stringify(list)); CONTACTS = list; return true; }
+  catch (e) { if (errEl) errEl.textContent = "Не удалось сохранить в памяти телефона"; return false; }
+}
+
+function openDetail(name) { openName = name; home.style.display = "none"; home.classList.remove("show"); detail.style.display = "block"; detail.classList.remove("show"); void detail.offsetWidth; detail.classList.add("show"); render(); window.scrollTo(0, 0); }
+function closeDetail() { openName = null; detail.style.display = "none"; detail.innerHTML = ""; home.style.display = ""; home.classList.remove("show"); void home.offsetWidth; home.classList.add("show"); render(); }
+
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-act]");
+  if (a) {
+    if (a.dataset.act === "tog") {
+      const n = a.dataset.n, delivering = !state.hidden.includes(n);
+      remember(delivering ? `${n} · доставлено` : `${n} возвращён`);
+      if (delivering) celebrate(a);
+      if (delivering && state.trip && state.trip.name === n) state.trip = null;
+      toggle(n);
+      if (openName) closeDetail();
+      if (delivering && CONTACTS.every(p => state.hidden.includes(p.name))) { setTimeout(bigCelebrate, 250); window.scrollTo({top: 0, behavior: "smooth"}); }
+    }
+    if (a.dataset.act === "showall") { remember("Все возвращены"); state.hidden = []; save(); render(); }
+    if (a.dataset.act === "undo") undo();
+    if (a.dataset.act === "export") exportBackup();
+    if (a.dataset.act === "trip") startTrip(a.dataset.n, a.dataset.m);
+    if (a.dataset.act === "arrived") arriveTrip(a.dataset.n);
+    if (a.dataset.act === "today") todayBox(a.dataset.n);
+    if (a.dataset.act === "shuffle") { render(); const nb = openName ? detail.querySelector(".panel") : next.querySelector(".panel"); if (nb) nb.querySelector(".prev").animate?.([{opacity: .3}, {opacity: 1}], {duration: 300}); }
+    if (a.dataset.act === "reset") { remember("Порядок сброшен"); state.order = defOrder(); save(); render(); }
+    if (a.dataset.act === "restart") { remember("Маршрут начат заново"); state.order = defOrder(); state.hidden = []; save(); render(); }
+    if (a.dataset.act === "back") closeDetail();
+    if (a.dataset.act === "edit") openForm(a.dataset.n);
+    if (a.dataset.act === "add") openForm("");
+    if (a.dataset.act === "cancel") closeForm(editing || null);
+    if (a.dataset.act === "del") deleteContact(a);
+    return;
+  }
+  if (editing !== null) return;
+  const r = e.target.closest("[data-open]");
+  if (r) openDetail(r.dataset.open);
+});
+
+// ===== Перетаскивание пальцем за ⠿ =====
+list.addEventListener("pointerdown", e => {
+  const h = e.target.closest(".handle");
+  if (!h) return;
+  e.preventDefault();
+  const li = h.closest(".item");
+  h.setPointerCapture(e.pointerId);
+  li.classList.add("drag");
+  drag = {li, startY: e.clientY, id: e.pointerId};
+});
+list.addEventListener("pointermove", e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const {li} = drag, y = e.clientY;
+  const ok = el => el && el.classList.contains("item") && !el.classList.contains("off");
+  const prev = li.previousElementSibling, nx = li.nextElementSibling;
+  const before = li.offsetTop;
+  // сосед плавно уезжает на освободившееся место
+  const slide = (el, move) => {
+    const t0 = el.getBoundingClientRect().top;
+    move();
+    const dy = t0 - el.getBoundingClientRect().top;
+    if (reduce || !dy) return;
+    el.style.transition = "none";
+    el.style.transform = `translateY(${dy}px)`;
+    el.getBoundingClientRect();
+    el.style.transition = "transform .4s cubic-bezier(.22,1,.36,1)";
+    el.style.transform = "";
+  };
+  // сравниваем с «настоящим» местом соседа (без анимации), чтобы не дёргалось
+  const py = y + window.scrollY - list.getBoundingClientRect().top - window.scrollY + list.offsetTop;
+  const mid = el => el.offsetTop + el.offsetHeight / 2;
+  if (ok(nx) && py > mid(nx)) slide(nx, () => list.insertBefore(nx, li));
+  else if (ok(prev) && py < mid(prev)) slide(prev, () => list.insertBefore(prev, li.nextElementSibling));
+  drag.startY += li.offsetTop - before;
+  li.style.transform = `translateY(${y - drag.startY}px)`;
+  if (y < 70) window.scrollBy(0, -10); else if (y > window.innerHeight - 70) window.scrollBy(0, 10);
+});
+const endDrag = e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  // не сбрасываем сдвиг — render() плавно довезёт карточку из-под пальца на её место
+  const prevOrder = JSON.stringify({order: state.order, hidden: state.hidden});
+  const active = [...list.querySelectorAll(".item:not(.off)")].map(el => el.dataset.n);
+  state.order = [...active, ...state.order.filter(n => !active.includes(n))];
+  if (JSON.stringify(state.order.filter(n => !state.hidden.includes(n))) !== JSON.stringify(JSON.parse(prevOrder).order.filter(n => !state.hidden.includes(n)))) { showToast("Порядок изменён"); undoSnap = prevOrder; }
+  drag = null;
+  save(); render();
+};
+list.addEventListener("pointerup", endDrag);
+list.addEventListener("pointercancel", endDrag);
+
+document.addEventListener("submit", e => { if (e.target.id === "cform") { e.preventDefault(); submitForm(); } });
+renderHeader();
+render();
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
