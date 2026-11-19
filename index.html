@@ -73,6 +73,7 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--map);outline-offset
 .empty{text-align:center;padding:22px 10px;color:var(--muted)}
 .back{font:inherit;font-weight:700;background:none;border:0;color:var(--map);padding:6px 0 12px;min-height:44px;cursor:pointer}
 #detail{display:none}
+.min.copied,.arrive.copied{outline:3px solid #f2b705;outline-offset:2px}
 .backup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:8px}
 .backup .btn{font-size:14px;min-height:46px;background:transparent;border-style:dashed;color:var(--muted)}
 .welcome h2{margin:6px 0;font-size:26px}.welcome p{margin:0}
@@ -269,8 +270,8 @@ function panel(p) {
     ${p.note ? `<div class="note">${hl(p.note)}</div>` : ""}
     ${main ? `<div class="lbl">✉ Через сколько минут буду — откроется ${app(main)} с текстом${cs.length > 1 ? " для " + esc(main) : ""}</div>
     <div class="prev"><span>${esc(TEMPLATES[k](p.greet || p.name, "… минут"))}</span><button class="shuf" data-act="shuffle" aria-label="Другой вариант">🔀</button></div>
-    <div class="mins">${MINUTES.map(m => `<a class="min" data-act="trip" data-n="${esc(p.name)}" data-m="${m}" href="${esc(chatLink(main, message(p, m, k)))}" target="_blank" rel="noopener"><b>${m}</b><small>мин</small></a>`).join("")}</div>` : ""}
-    ${main ? (() => { const t = ARRIVE[Math.floor(Math.random() * ARRIVE.length)](p.greet || p.name); return `<a class="arrive" data-act="arrived" data-n="${esc(p.name)}" href="${esc(chatLink(main, t))}" target="_blank" rel="noopener"><b>🏁 Я на месте</b><small>${esc(t)}</small></a>`; })() : ""}
+    <div class="mins">${MINUTES.map(m => `<a class="min" data-text="${esc(message(p, m, k))}" href="${esc(chatLink(main, message(p, m, k)))}" target="_blank" rel="noopener"><b>${m}</b><small>мин</small></a>`).join("")}</div>` : ""}
+    ${main ? (() => { const t = ARRIVE[Math.floor(Math.random() * ARRIVE.length)](p.greet || p.name); return `<a class="arrive" data-text="${esc(t)}" href="${esc(chatLink(main, t))}" target="_blank" rel="noopener"><b>🏁 Я на месте</b><small>${esc(t)}</small></a>`; })() : ""}
     <div class="btns">
       <div class="two">
         ${main ? `<a class="btn" href="${esc(chatLink(main))}" target="_blank" rel="noopener">💬 Чат</a>` : ""}
@@ -632,7 +633,27 @@ async function saveContacts(list, errEl) {
 function openDetail(name) { openName = name; home.style.display = "none"; home.classList.remove("show"); detail.style.display = "block"; detail.classList.remove("show"); void detail.offsetWidth; detail.classList.add("show"); render(); window.scrollTo(0, 0); }
 function closeDetail() { openName = null; detail.style.display = "none"; detail.innerHTML = ""; home.style.display = ""; home.classList.remove("show"); void home.offsetWidth; home.classList.add("show"); render(); }
 
+// Копируем сообщение и только потом открываем чат
+function copyFallback(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:-100px;opacity:0";
+  document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+  ta.remove(); return ok;
+}
+async function copyAndGo(a) {
+  const text = a.dataset.text;
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = copyFallback(text); }
+  showToast(ok ? "📋 Текст скопирован — вставь в чат и отправь" : "Не удалось скопировать", false);
+  a.classList.add("copied");
+  setTimeout(() => a.classList.remove("copied"), 1200);
+  setTimeout(() => { const w = window.open(a.href, "_blank"); if (!w) location.href = a.href; }, 250);
+}
+
 document.addEventListener("click", e => {
+  const ct = e.target.closest("a[data-text]");
+  if (ct) { e.preventDefault(); copyAndGo(ct); return; }
   const a = e.target.closest("[data-act]");
   if (a) {
     if (a.dataset.act === "tog") {
