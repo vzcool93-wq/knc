@@ -1183,8 +1183,8 @@ const packEl = document.getElementById("pack");
 let packEditing = false;
 
 // Разбор текста вида:
-// Dish name - Alexey, Volha x2, Max - 18
-// NO ONIONS - Volha x2 - 2          ← строка БОЛЬШИМИ буквами = замена для блюда выше
+// Блюдо - Имя, Имя x2, Имя - 18
+// NO ONIONS - Имя x2 - 2          ← строка БОЛЬШИМИ буквами = замена для блюда выше
 function parsePack(text) {
   const dishes = [];
   const lines = String(text || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
