@@ -723,13 +723,28 @@ function exportBackup() {
   showToast("Копия сохранена в Загрузки", false);
 }
 document.addEventListener("change", async e => {
-  if (e.target.id !== "importFile" && e.target.id !== "importRecipes") return;
+  if (!["importFile", "importRecipes", "importPack"].includes(e.target.id)) return;
   const f = e.target.files[0]; e.target.value = "";
   if (!f) return;
   try {
     const j = JSON.parse(await f.text());
-    if (j && Array.isArray(j.recipes)) { try { await importRecipes(j); } catch (er) { showToast("В файле ошибка в техкартах", false); } return; }
-    if (e.target.id === "importRecipes") throw 0;
+    // Файл недели / техкарт / фасовки — любой кнопкой «Загрузить»
+    if (j && (Array.isArray(j.recipes) || typeof j.packing === "string")) {
+      let msg = [];
+      if (Array.isArray(j.recipes)) { try { await importRecipes(j); msg.push(`техкарт: ${j.recipes.length}`); } catch (er) { showToast("В файле ошибка в техкартах", false); return; } }
+      if (typeof j.packing === "string" && j.packing.trim()) {
+        const {items} = parsePack(j.packing);
+        if (items.length) {
+          if (PACK.text && PACK.text.trim() !== j.packing.trim() && !(await confirmBox("Заменить список фасовки?", "Текущий список и галочки фасовки заменятся новыми.", "Да, заменить"))) { /* оставить старый */ }
+          else { if (PACK.text.trim() !== j.packing.trim()) PACK.checks = {}; PACK.text = j.packing.trim(); PACK.open = null; savePack(); packEditing = false; msg.push(`фасовка: ${new Set(items.map(i => i.client)).size} клиентов`); }
+        }
+      }
+      if (Array.isArray(j.list)) msg.push("контакты в этом файле пропущены — загрузи их во вкладке «Доставка»");
+      if (!packEl.hidden) renderPack();
+      showToast("Загружено — " + msg.join(", "), false);
+      return;
+    }
+    if (e.target.id !== "importFile") throw 0;
     const list = Array.isArray(j) ? j : j.list;
     if (!Array.isArray(list) || !list.every(p => p && typeof p.name === "string")) throw 0;
     if (CONTACTS.length && !(await confirmBox("Заменить список?", `Сейчас клиентов: ${CONTACTS.length}. В файле: ${list.length}. Текущий список заменится.`, "Да, заменить"))) return;
@@ -738,7 +753,7 @@ document.addEventListener("change", async e => {
     state.order = list.map(p => p.name); state.hidden = []; save(); render();
     showToast(`Загружено клиентов: ${list.length}`, false);
   } catch (err) {
-    showToast(e.target.id === "importRecipes" ? "Это не файл с техкартами" : "Это не файл с контактами", false);
+    showToast(e.target.id === "importFile" ? "Это не файл с контактами" : "Не понял этот файл — нужен файл недели или техкарт", false);
   }
 });
 
@@ -1008,7 +1023,7 @@ setInterval(tickTimers, 500);
 function renderKitchen() {
   if (!RECIPES.length) {
     kitchen.innerHTML = `<div class="panel empty welcome"><div style="font-size:44px">🍳</div><h2 class="cond">Техкарт пока нет</h2><p>Загрузи файл с техкартами — он хранится только на этом телефоне.</p></div>
-      <label class="btn addnew">📂 Загрузить техкарты<input type="file" id="importRecipes" accept=".json,application/json" hidden></label>`;
+      <label class="btn addnew">📂 Загрузить техкарты или неделю<input type="file" id="importRecipes" accept=".json,application/json" hidden></label>`;
     return;
   }
   const r = RECIPES.find(x => x.id === kOpen);
@@ -1253,7 +1268,8 @@ function renderPack() {
         return `<div class="panel pdish${dq === d.total ? " pdone" : ""}"><div class="pdh"><b>${esc(d.dish)}</b><span class="pcount">${dq}/${d.total}</span></div>
           ${its.map(it => packRow(it, true)).join("")}</div>`;
       }).join("")}
-    <div class="backup"><button class="btn" data-p="edit">✏️ Изменить список</button><button class="btn" data-p="new">🆕 Новый список</button></div>`;
+    <div class="backup"><button class="btn" data-p="edit">✏️ Изменить список</button><button class="btn" data-p="new">🆕 Новый список</button></div>
+    <label class="btn addnew">📂 Загрузить файл недели<input type="file" id="importPack" accept=".json,application/json" hidden></label>`;
 }
 const shortDish = d => d.length > 26 ? d.slice(0, 24).trim() + "…" : d;
 function packRow(it, showClient) {
@@ -1280,6 +1296,7 @@ function renderPackInput(err) {
     <textarea id="ptext" rows="10" placeholder="Вставь список сюда">${esc(PACK.text)}</textarea>
     ${err ? `<p class="err">${esc(err)}</p>` : ""}
     <div class="two" style="margin-top:8px"><button class="btn" data-p="paste">📋 Из буфера</button><button class="btn save" data-p="parse">Разобрать →</button></div>
+    <label class="btn" style="margin-top:8px">📂 Загрузить файл недели<input type="file" id="importPack" accept=".json,application/json" hidden></label>
     ${PACK.text ? `<button class="back" data-p="cancel">← Отмена</button>` : ""}
   </div>`;
 }
