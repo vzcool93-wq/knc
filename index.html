@@ -78,7 +78,7 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--map);outline-offset
 #detail{display:none}
 /* ===== вкладки ===== */
 body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}
-#tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:1fr 1fr;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 12px rgba(0,0,0,.08)}
+#tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 12px rgba(0,0,0,.08)}
 .tab{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:60px;justify-content:center;border:0;background:none;color:var(--muted);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .tab span{font-size:22px;line-height:1;filter:grayscale(1);opacity:.6;transition:all .2s}
 .tab.on{color:var(--brand2)}.tab.on span{filter:none;opacity:1;transform:scale(1.1)}
@@ -125,6 +125,21 @@ main[hidden]{display:none}
 .tchip.on{display:inline-flex;align-items:center;opacity:.7;cursor:default}
 .tchips.big .tchip{min-height:56px;font-size:17px;flex:1 1 auto}
 .info p{margin:0 0 8px;font-size:15px}.info p:last-child{margin:0}
+
+/* ===== фасовка ===== */
+#pack{max-width:640px;margin:0 auto;padding:12px max(3vw,10px) 40px}
+#ptext{width:100%;font:inherit;font-size:15px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical;min-height:200px}
+.pstat .pnums{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.pnums div{background:var(--soft);border-radius:12px;padding:8px 12px}.pnums b{display:block;font-size:28px;line-height:1.1}.pnums b small{font-size:16px;color:var(--muted)}.pnums span{font-size:13px;color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--soft);border-radius:12px;padding:4px}
+.seg button{min-height:44px;border:0;border-radius:9px;background:none;color:var(--ink);font:inherit;font-weight:700;cursor:pointer}.seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.pwarn{background:var(--note);border:2px solid var(--notebd);color:var(--noteink);border-radius:12px;padding:8px 12px;margin:10px 0;font-size:14px;font-weight:600}
+.pav{background:var(--brand)!important}
+.flag.fl3{background:#fde3e1;color:#a3160b;border-color:#d93025}
+.modb{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;background:#d93025;color:#fff;font-size:12px;font-weight:800;vertical-align:middle}
+.prow .iamt{font-size:20px}
+.pdish{margin-bottom:8px;padding:8px 10px}.pdish.pdone{opacity:.55}
+.pdh{display:flex;align-items:center;gap:8px;margin:4px 4px 6px}.pdh b{flex:1;font-size:16px}.pcount{font-weight:800;font-variant-numeric:tabular-nums;background:var(--soft);border-radius:8px;padding:2px 8px}
 /* ===== режим готовки ===== */
 .cook .ctop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cook .ctop span{color:var(--muted);font-size:13px;flex:1;text-align:right}
 .cprog{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0 12px}.cprog i{display:block;height:100%;background:var(--go);transition:width .5s cubic-bezier(.22,1,.36,1)}
@@ -219,7 +234,8 @@ main[hidden]{display:none}
   <div id="detail"></div>
 </main>
 <main id="kitchen" hidden></main>
-<nav id="tabs"><button class="tab" data-tab="delivery"><span>🚗</span>Доставка</button><button class="tab" data-tab="kitchen"><span>🍳</span>Кухня</button></nav>
+<main id="pack" hidden></main>
+<nav id="tabs"><button class="tab" data-tab="delivery"><span>🚗</span>Доставка</button><button class="tab" data-tab="kitchen"><span>🍳</span>Кухня</button><button class="tab" data-tab="pack"><span>📦</span>Фасовка</button></nav>
 <script>
 {
 // ===== СПИСОК КОНТАКТОВ =====
@@ -1155,11 +1171,169 @@ async function importRecipes(j) {
   showToast(`Техкарт загружено: ${rs.length}`, false);
 }
 
+// (фасовка ниже)
+
+// ================= ФАСОВКА =================
+// Текст списка и галочки хранятся только на телефоне.
+const PKEY = "knc-pack-v1";
+let PACK = {text: "", checks: {}, view: "clients", open: null, savedAt: ""};
+try { const pk = JSON.parse(localStorage.getItem(PKEY) || "null"); if (pk && typeof pk === "object") PACK = {...PACK, ...pk, checks: pk.checks || {}}; } catch (e) {}
+const savePack = () => { try { localStorage.setItem(PKEY, JSON.stringify(PACK)); } catch (e) {} };
+const packEl = document.getElementById("pack");
+let packEditing = false;
+
+// Разбор текста вида:
+// Dish name - Alexey, Volha x2, Max - 18
+// NO ONIONS - Volha x2 - 2          ← строка БОЛЬШИМИ буквами = замена для блюда выше
+function parsePack(text) {
+  const dishes = [];
+  const lines = String(text || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  for (const line of lines) {
+    const parts = line.split(/\s+[-–—]\s+/);
+    if (parts.length < 2) continue;
+    let title = parts[0].trim(), namesPart = parts[1], stated = null;
+    if (parts.length >= 3 && /^\d+$/.test(parts[parts.length - 1].trim())) { stated = +parts[parts.length - 1].trim(); namesPart = parts.slice(1, -1).join(" - "); }
+    else namesPart = parts.slice(1).join(" - ");
+    const people = namesPart.split(",").map(x => x.trim()).filter(Boolean).map(x => {
+      const m = x.match(/^(.*?)\s*[x×х]\s*(\d+)$/i);
+      return m ? {name: m[1].trim(), qty: +m[2]} : {name: x, qty: 1};
+    }).filter(p => p.name && !/^\d+$/.test(p.name));
+    const isMod = !/[a-zа-яё]/.test(title) && dishes.length; // нет строчных букв → замена
+    if (isMod) dishes[dishes.length - 1].mods.push({mod: title, people, stated});
+    else dishes.push({dish: title, people, stated, mods: []});
+  }
+  // позиции для фасовки
+  const items = [];
+  dishes.forEach((d, di) => {
+    d.people.forEach(p => items.push({key: `${d.dish}||${p.name}`, dish: d.dish, di, mod: "", client: p.name, qty: p.qty}));
+    d.mods.forEach(m => m.people.forEach(p => items.push({key: `${d.dish}|${m.mod}|${p.name}`, dish: d.dish, di, mod: m.mod, client: p.name, qty: p.qty})));
+    const main = d.people.reduce((s, p) => s + p.qty, 0), mods = d.mods.reduce((s, m) => s + m.people.reduce((a, p) => a + p.qty, 0), 0);
+    d.main = main; d.modsQty = mods; d.total = main + mods;
+    d.warn = d.stated != null && d.stated !== main && d.stated !== main + mods ? `в тексте ${d.stated}, по именам ${main}${mods ? ` + ${mods} с заменами` : ""}` : "";
+    d.mods.forEach(m => { const q = m.people.reduce((a, p) => a + p.qty, 0); m.warn = m.stated != null && m.stated !== q ? `в тексте ${m.stated}, по именам ${q}` : ""; });
+  });
+  return {dishes, items};
+}
+const isPacked = it => !!PACK.checks[it.key];
+function routeNum(name) {
+  const route = ordered().filter(x => !isOff(x));
+  const k = route.findIndex(x => x.name.toLowerCase() === name.toLowerCase());
+  return k >= 0 ? k + 1 : 0;
+}
+function renderPack() {
+  if (!PACK.text || packEditing) return renderPackInput();
+  const {dishes, items} = parsePack(PACK.text);
+  if (!items.length) { packEditing = true; return renderPackInput("Не получилось разобрать список — проверь формат."); }
+  const clients = {};
+  for (const it of items) (clients[it.client] = clients[it.client] || []).push(it);
+  const names = Object.keys(clients).sort((a, b) => a.localeCompare(b));
+  const cDone = n => clients[n].every(isPacked);
+  const doneClients = names.filter(cDone).length;
+  const totalQty = items.reduce((s, it) => s + it.qty, 0), doneQty = items.filter(isPacked).reduce((s, it) => s + it.qty, 0);
+  const warns = dishes.flatMap(d => [d.warn ? `${d.dish}: ${d.warn}` : "", ...d.mods.map(m => m.warn ? `${d.dish} · ${m.mod}: ${m.warn}` : "")]).filter(Boolean);
+
+  if (PACK.open && clients[PACK.open]) return renderPackClient(PACK.open, clients[PACK.open]);
+
+  packEl.innerHTML = `<div class="panel pstat">
+      <div class="pnums"><div><b>${doneClients}<small>/${names.length}</small></b><span>клиентов собрано</span></div><div><b>${doneQty}<small>/${totalQty}</small></b><span>боксов</span></div></div>
+      <div class="cprog"><i style="width:${totalQty ? Math.round(doneQty / totalQty * 100) : 0}%"></i></div>
+      <div class="seg"><button class="${PACK.view === "clients" ? "on" : ""}" data-p="view" data-v="clients">👤 По клиентам</button><button class="${PACK.view === "dishes" ? "on" : ""}" data-p="view" data-v="dishes">🍱 По блюдам</button></div>
+    </div>
+    ${warns.length ? `<div class="pwarn">⚠ Проверь количество:<br>${warns.map(esc).join("<br>")}</div>` : ""}
+    ${PACK.view === "clients" ? `<ul class="list">${names.sort((a, b) => cDone(a) - cDone(b) || a.localeCompare(b)).map(n => {
+        const its = clients[n], q = its.reduce((s, it) => s + it.qty, 0), dq = its.filter(isPacked).reduce((s, it) => s + it.qty, 0);
+        const done = dq === q, rn = routeNum(n), hasMod = its.some(it => it.mod);
+        return `<li class="item${done ? " delivered" : ""}"><button class="row" data-p="client" data-n="${esc(n)}">
+          <span class="av${done ? "" : " pav"}">${done ? "✓" : q}</span>
+          <span><div class="nm">${esc(n)}${hasMod ? `<span class="flag fl3">замена</span>` : ""}${rn ? `<span class="flag">🚗 ${rn}</span>` : ""}</div>
+          <div class="sub">${dq}/${q} · ${esc([...new Set(its.map(it => shortDish(it.dish)))].join(", "))}</div></span></button></li>`;
+      }).join("")}</ul>`
+    : dishes.map((d, di) => {
+        const its = items.filter(it => it.di === di), dq = its.filter(isPacked).reduce((s, it) => s + it.qty, 0);
+        return `<div class="panel pdish${dq === d.total ? " pdone" : ""}"><div class="pdh"><b>${esc(d.dish)}</b><span class="pcount">${dq}/${d.total}</span></div>
+          ${its.map(it => packRow(it, true)).join("")}</div>`;
+      }).join("")}
+    <div class="backup"><button class="btn" data-p="edit">✏️ Изменить список</button><button class="btn" data-p="new">🆕 Новый список</button></div>`;
+}
+const shortDish = d => d.length > 26 ? d.slice(0, 24).trim() + "…" : d;
+function packRow(it, showClient) {
+  const on = isPacked(it);
+  return `<button class="ingrow prow${on ? " on" : ""}" data-p="check" data-key="${esc(it.key)}">
+    <span class="ck">${on ? "✓" : ""}</span>
+    <span class="iname">${esc(showClient ? it.client : it.dish)}${it.mod ? `<span class="modb">${esc(it.mod)}</span>` : ""}</span>
+    <span class="iamt">${it.qty > 1 ? `×${it.qty}` : ""}</span>
+  </button>`;
+}
+function renderPackClient(name, its) {
+  const q = its.reduce((s, it) => s + it.qty, 0), done = its.every(isPacked), rn = routeNum(name);
+  packEl.innerHTML = `<button class="back" data-p="back">← Все клиенты</button>
+    <div class="panel"><div class="top"><span class="av pav">${q}</span><h2 class="cond">${esc(name)}</h2></div>
+      ${rn ? `<p class="rmeta">🚗 В маршруте доставки № ${rn}</p>` : ""}
+      ${its.some(it => it.mod) ? `<div class="pwarn">⚠ Есть замены — смотри красные пометки</div>` : ""}
+      ${its.map(it => packRow(it, false)).join("")}
+      <button class="cookbtn" data-p="all" data-n="${esc(name)}" style="margin-top:12px">${done ? "↩ Снять все галочки" : "✓ Всё собрано"}</button>
+    </div>`;
+}
+function renderPackInput(err) {
+  packEl.innerHTML = `<div class="panel"><h2 class="cond" style="margin:0 0 6px;font-size:24px">📦 Список фасовки</h2>
+    <p class="rmeta">Вставь текст списка как есть: «Блюдо - Имя, Имя x2 - 18». Строки БОЛЬШИМИ буквами (NO ONIONS…) — замены к блюду выше.</p>
+    <textarea id="ptext" rows="10" placeholder="Вставь список сюда">${esc(PACK.text)}</textarea>
+    ${err ? `<p class="err">${esc(err)}</p>` : ""}
+    <div class="two" style="margin-top:8px"><button class="btn" data-p="paste">📋 Из буфера</button><button class="btn save" data-p="parse">Разобрать →</button></div>
+    ${PACK.text ? `<button class="back" data-p="cancel">← Отмена</button>` : ""}
+  </div>`;
+}
+packEl.addEventListener("click", async e => {
+  const a = e.target.closest("[data-p]");
+  if (!a) return;
+  const k = a.dataset.p;
+  if (k === "view") { PACK.view = a.dataset.v; savePack(); renderPack(); }
+  if (k === "client") { PACK.open = a.dataset.n; savePack(); renderPack(); window.scrollTo(0, 0); }
+  if (k === "back") { PACK.open = null; savePack(); renderPack(); }
+  if (k === "check") {
+    const key = a.dataset.key, was = !!PACK.checks[key];
+    if (was) delete PACK.checks[key]; else PACK.checks[key] = 1;
+    savePack();
+    const {items} = parsePack(PACK.text);
+    const it = items.find(x => x.key === key);
+    if (!was && it && items.filter(x => x.client === it.client).every(isPacked)) { celebrate(a); showToast(`📦 ${it.client} — собрано`, false); }
+    renderPack();
+  }
+  if (k === "all") {
+    const {items} = parsePack(PACK.text), its = items.filter(x => x.client === a.dataset.n), done = its.every(isPacked);
+    its.forEach(it => { if (done) delete PACK.checks[it.key]; else PACK.checks[it.key] = 1; });
+    savePack();
+    if (!done) { celebrate(a); showToast(`📦 ${a.dataset.n} — собрано`, false); PACK.open = null; savePack(); }
+    renderPack(); window.scrollTo(0, 0);
+  }
+  if (k === "edit") { packEditing = true; renderPack(); }
+  if (k === "cancel") { packEditing = false; renderPack(); }
+  if (k === "new") {
+    if (!(await confirmBox("Начать новый список?", "Текущий список и галочки удалятся.", "Да, новый", true))) return;
+    PACK.text = ""; PACK.checks = {}; PACK.open = null; savePack(); packEditing = true; renderPack();
+  }
+  if (k === "paste") {
+    try { const t = await navigator.clipboard.readText(); if (t) document.getElementById("ptext").value = t; }
+    catch (er) { showToast("Не дали доступ к буферу — вставь вручную (долгое нажатие → Вставить)", false); }
+  }
+  if (k === "parse") {
+    const t = document.getElementById("ptext").value.trim();
+    const {items} = parsePack(t);
+    if (!items.length) return renderPackInput("Не нашёл ни одного блюда. Формат: «Блюдо - Имя, Имя x2 - 18».");
+    // галочки сохраняются для тех же блюд и людей (если список поправили утром)
+    const keys = new Set(items.map(it => it.key));
+    Object.keys(PACK.checks).forEach(key => { if (!keys.has(key)) delete PACK.checks[key]; });
+    PACK.text = t; PACK.open = null; PACK.savedAt = new Date().toISOString(); packEditing = false; savePack(); renderPack(); window.scrollTo(0, 0);
+  }
+});
+
 // --- вкладки ---
 const deliveryMain = document.getElementById("delivery");
 function switchTab(t) {
+  if (!["delivery", "kitchen", "pack"].includes(t)) t = "delivery";
   const k = t === "kitchen";
-  deliveryMain.hidden = k; kitchen.hidden = !k;
+  deliveryMain.hidden = t !== "delivery"; kitchen.hidden = t !== "kitchen"; packEl.hidden = t !== "pack";
+  if (t === "pack") renderPack();
   document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   try { localStorage.setItem("knc-tab", t); } catch (e) {}
   if (k) renderKitchen();
