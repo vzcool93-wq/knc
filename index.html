@@ -141,13 +141,17 @@ main[hidden]{display:none}
 .pdish{margin-bottom:8px;padding:8px 10px}.pdish.pdone{opacity:.55}
 .pdh{display:flex;align-items:center;gap:8px;margin:4px 4px 6px}.pdh b{flex:1;font-size:16px}.pcount{font-weight:800;font-variant-numeric:tabular-nums;background:var(--soft);border-radius:8px;padding:2px 8px}
 [hidden]{display:none!important}
-.tasks{margin-bottom:8px;border:2px solid #8b5cf6}.tasks .th{display:block;margin-bottom:6px;color:light-dark(#5b21b6,#c4b5fd)}
-.task,.ctask{display:flex;align-items:center;gap:10px;padding:8px 6px 8px 12px;margin-top:6px;border-radius:12px;background:light-dark(#f1ebff,#2a1f45);font-size:17px;font-weight:600}
-.task span{flex:1}.ctask{border:2px solid #8b5cf6;margin:0 0 10px}
-.task button,.ctask button{flex:none;width:44px;height:44px;margin-left:auto;border:0;border-radius:10px;background:#8b5cf6;color:#fff;font-size:20px;font-weight:800;cursor:pointer}
-.taskadd{display:flex;gap:8px;margin-top:10px}.taskadd input{flex:1;font:inherit;font-size:16px;padding:10px 12px;min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
-.taskadd .btn{width:56px;min-height:48px;font-size:22px}
-.tasks.pinned{position:relative}
+.tasks{margin-bottom:8px;border:2px solid #8b5cf6}
+.tasks .th{font-weight:800;color:light-dark(#5b21b6,#c4b5fd);margin-bottom:4px}
+.task{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;margin-top:6px;padding:8px 12px;border:0;border-radius:12px;background:light-dark(#f1ebff,#2a1f45);color:var(--ink);font:inherit;font-size:17px;font-weight:600;text-align:left;cursor:pointer;transition:opacity .35s,transform .35s}
+.tcirc{flex:none;width:28px;height:28px;border-radius:50%;border:2.5px solid #8b5cf6;display:grid;place-items:center}
+.task.tdone .tcirc{background:#8b5cf6}.task.tdone .tcirc::after{content:"✓";color:#fff;font-weight:900;font-size:16px}
+.task.tdone .ttext{text-decoration:line-through;opacity:.6}
+.ttext{flex:1}
+.thint{margin:8px 2px 0;color:var(--muted);font-size:13px}
+.tmore{display:block;width:100%;margin-top:8px;min-height:44px;border:0;border-radius:12px;background:none;color:light-dark(#5b21b6,#c4b5fd);font:inherit;font-weight:700;cursor:pointer}
+.taskbtn{display:block;width:100%;min-height:52px;margin-bottom:8px;border:2px dashed #8b5cf6;border-radius:14px;background:var(--card);color:light-dark(#5b21b6,#c4b5fd);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
+.ctasks{padding:10px;margin-bottom:10px;border-radius:14px}
 .parkcard{display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--brand);color:var(--cream)}.parkcard span{flex:1}.parkcard small{display:block;font-size:13px;opacity:.85}.parkcard b{font-size:30px;letter-spacing:.05em;font-variant-numeric:tabular-nums}.parkcard .sck{background:rgba(255,255,255,.15);color:var(--cream)}
 /* ===== рейс ===== */
 .plan b{font-size:17px}.plan p{margin:6px 0 0;color:var(--muted);font-size:15px}
@@ -387,7 +391,7 @@ function panel(p) {
   return `<div class="panel">
     <div class="top"><span class="av">${(() => { const n = ordered().filter(x => !isOff(x)).findIndex(x => x.name === p.name) + 1; return n ? n : esc((p.name[0] || "?").toUpperCase()); })()}</span><h2 class="cond">${esc(p.name)}</h2><button class="more pinbtn" data-act="today" data-n="${esc(p.name)}" aria-label="Заметка на сегодня">📌</button><button class="more" data-act="edit" data-n="${esc(p.name)}" aria-label="Изменить данные ${esc(p.name)}">⋯</button></div>
     ${p.address ? `<div class="addrrow"><a class="addr" href="${esc(navLink(p))}" target="_blank" rel="noopener"><span class="ic">🧭</span><span><small>Поехали · навигация</small><b>${esc(p.address)}</b></span></a><a class="pin" href="${esc(mapsLink(p))}" target="_blank" rel="noopener" aria-label="Место на карте">📍<small>карта</small></a></div>` : ""}
-    ${tasksFor(p).map(t => `<div class="ctask">📝 ${esc(t.text)}<button data-act="taskdone" data-id="${t.id}" aria-label="Выполнено">✓</button></div>`).join("")}
+    ${tasksFor(p).length ? `<div class="tasks ctasks"><div class="th">📝 Для этого клиента</div>${tasksFor(p).map(taskRow).join("")}</div>` : ""}
     ${todayNote(p.name) ? `<button class="today" data-act="today" data-n="${esc(p.name)}"><small>📌 Сегодня</small>${esc(todayNote(p.name))}</button>` : ""}
     ${p.note ? `<div class="note">${hl(p.note)}</div>` : ""}
     ${main ? `<div class="lbl">✉ Через сколько минут буду — откроется ${app(main)} с текстом${cs.length > 1 ? " для " + esc(main) : ""}</div>
@@ -447,7 +451,7 @@ function render() {
   document.getElementById("nextHead").innerHTML = `<span>${phase === "plan" ? "Подготовка маршрута" : phase === "stats" ? "Итоги доставки" : "Следующий"}</span>`;
   list.hidden = bar.hidden = phase === "stats";
   next.innerHTML = !all.length ? `<div class="panel empty welcome"><div style="font-size:44px">📦</div><h2 class="cond">Список пуст</h2><p>Нажми «📂 Восстановить» внизу и выбери файл с контактами — или добавь клиента вручную.</p></div>`
-    : phase === "plan" ? tasksHTML(true) + `<div class="panel parkcard"><span><small>🅿️ Код от парковки</small><b>${esc(SETTINGS.parkCode || "не задан")}</b></span><button class="sck" data-act="parkedit" aria-label="Изменить код парковки">✏️</button></div><div class="panel plan"><b>🗺 Выставь очередь на сегодня</b><p>Удерживай и перетаскивай клиентов в нужном порядке. ✓ — убрать тех, к кому сегодня не едешь. Потом внизу нажми «Начать доставку».</p></div>`
+    : phase === "plan" ? `<div class="panel parkcard"><span><small>🅿️ Код от парковки</small><b>${esc(SETTINGS.parkCode || "не задан")}</b></span><button class="sck" data-act="parkedit" aria-label="Изменить код парковки">✏️</button></div>${tasksHTML(true)}<div class="panel plan"><b>🗺 Выставь очередь на сегодня</b><p>Удерживай и перетаскивай клиентов в нужном порядке. ✓ — убрать тех, к кому сегодня не едешь. Потом внизу нажми «Начать доставку».</p></div>`
     : phase === "stats" ? statsHTML()
     : active.length ? tasksHTML(false) + panel(active[0]) : tasksHTML(false) + finishHTML();
   const nextName = active.length ? active[0].name : "";
@@ -478,16 +482,17 @@ function render() {
 }
 
 // ===== Окно с полем ввода =====
-function inputBox(title, value) {
+function inputBox(title, value, placeholder, okLabel) {
   return new Promise(resolve => {
     const wrap = document.createElement("div");
     wrap.className = "modal";
     wrap.innerHTML = `<form class="sheet" role="dialog" aria-modal="true"><h3>${esc(title)}</h3>
-      <input id="ibox" value="${esc(value)}" autocomplete="off" style="width:100%;font:inherit;font-size:22px;font-weight:800;padding:10px 12px;border-radius:12px;border:2px solid var(--go);background:var(--bg);color:var(--ink);margin:6px 0 14px">
-      <div class="mbtns"><button type="button" class="btn" data-m="no">Отмена</button><button type="submit" class="btn mok">Сохранить</button></div></form>`;
+      <input id="ibox" value="${esc(value)}" placeholder="${esc(placeholder || "")}" autocomplete="off" style="width:100%;font:inherit;font-size:22px;font-weight:800;padding:10px 12px;border-radius:12px;border:2px solid var(--go);background:var(--bg);color:var(--ink);margin:6px 0 14px">
+      <div class="mbtns"><button type="button" class="btn" data-m="no">Отмена</button><button type="submit" class="btn mok">${esc(okLabel || "Сохранить")}</button></div></form>`;
     document.body.appendChild(wrap);
     requestAnimationFrame(() => wrap.classList.add("open"));
     const inp = wrap.querySelector("#ibox"); setTimeout(() => { inp.focus(); inp.select(); }, 50);
+    if (placeholder) { inp.style.fontSize = "18px"; inp.style.fontWeight = "600"; }
     const close = v => { wrap.classList.remove("open"); setTimeout(() => wrap.remove(), 250); resolve(v); };
     wrap.querySelector("form").addEventListener("submit", e => { e.preventDefault(); e.stopPropagation(); close(inp.value); });
     wrap.addEventListener("click", e => { e.stopPropagation(); if (e.target === wrap || e.target.closest("[data-m=no]")) close(null); });
@@ -726,23 +731,18 @@ function tasksFor(p) {
   const stems = [...new Set(vars.map(v => v.split(/\s+/)[0]).filter(v => v.length >= 3).map(v => v.slice(0, Math.max(3, v.length - 2))))];
   return openTasks().filter(t => t.text.toLowerCase().split(/[^a-zа-яё]+/i).some(w => stems.some(st => w.startsWith(st))));
 }
+function taskRow(t) {
+  return `<button class="task" data-act="taskdone" data-id="${t.id}"><span class="tcirc"></span><span class="ttext">${esc(t.text)}</span></button>`;
+}
 function tasksHTML(edit) {
   const ts = openTasks();
-  if (!edit && !ts.length) return "";
-  return `<div class="panel tasks${edit ? "" : " pinned"}">
-    <b class="th">📝 На сегодня${ts.length ? ` · ${ts.length}` : ""}</b>
-    ${ts.map(t => `<div class="task" data-id="${t.id}"><span>${esc(t.text)}</span><button data-act="taskdone" data-id="${t.id}" aria-label="Выполнено">✓</button></div>`).join("")}
-    ${edit ? `<form class="taskadd" id="taskForm"><input id="taskText" placeholder="Например: Мария — взять деньги" autocomplete="off"><button class="btn save" type="submit" aria-label="Добавить">＋</button></form>` : ""}
+  if (!ts.length) return edit ? `<button class="taskbtn" data-act="taskadd">📝 Добавить заметку на сегодня</button>` : "";
+  return `<div class="panel tasks">
+    <div class="th">📝 На сегодня</div>
+    ${ts.map(taskRow).join("")}
+    ${edit ? `<button class="tmore" data-act="taskadd">+ Добавить ещё</button>` : `<p class="thint">Нажми на заметку, когда сделал</p>`}
   </div>`;
 }
-document.addEventListener("submit", e => {
-  if (e.target.id !== "taskForm") return;
-  e.preventDefault();
-  const inp = document.getElementById("taskText"), t = inp.value.trim();
-  if (!t) return;
-  state.tasks.push({id: Date.now().toString(36), text: t, done: false}); save(); render();
-  setTimeout(() => { const i = document.getElementById("taskText"); if (i) i.focus(); }, 50);
-});
 
 function checkFinish() {
   const route = CONTACTS.filter(p => !state.hidden.includes(p.name));
@@ -764,7 +764,7 @@ function bigCelebrate() {
 // ===== Отмена последнего действия =====
 let undoSnap = null, undoTimer = null;
 function remember(label) {
-  undoSnap = JSON.stringify({order: state.order, hidden: state.hidden, done: state.done});
+  undoSnap = JSON.stringify({order: state.order, hidden: state.hidden, done: state.done, tasks: state.tasks});
   showToast(label);
 }
 function showToast(label, canUndo) {
@@ -778,7 +778,7 @@ function showToast(label, canUndo) {
 function undo() {
   if (!undoSnap) return;
   const u = JSON.parse(undoSnap);
-  state.order = u.order; state.hidden = u.hidden; if (u.done) state.done = u.done; undoSnap = null;
+  state.order = u.order; state.hidden = u.hidden; if (u.done) state.done = u.done; if (u.tasks) state.tasks = u.tasks; undoSnap = null;
   save(); render();
   const t = document.getElementById("toast"); if (t) t.classList.remove("open");
   clearTimeout(undoTimer);
@@ -964,13 +964,18 @@ document.addEventListener("click", e => {
       if (openName) closeDetail();
       if (delivering) checkFinish();
     }
+    if (a.dataset.act === "taskadd") {
+      inputBox("📝 Заметка на сегодня", "", "Взять деньги у Марии", "Добавить").then(v => { if (!v || !v.trim()) return; state.tasks.push({id: Date.now().toString(36), text: v.trim(), done: false}); save(); render(); });
+    }
     if (a.dataset.act === "taskdone") {
       const t = state.tasks.find(x => x.id === a.dataset.id);
       if (t) {
+        remember("✓ " + t.text);
         t.done = true; save(); chime([[988, 0, .12], [1319, .1, .25]]);
-        showToast("✓ " + t.text, false);
-        const el = a.closest(".task, .ctask");
-        if (el && !reduce) { el.style.transition = "opacity .35s, transform .35s"; el.style.opacity = "0"; el.style.transform = "translateX(40px)"; setTimeout(render, 330); } else render();
+        a.classList.add("tdone");
+        const el = a;
+        // сначала видно галочку, потом заметка плавно уезжает
+        if (el && !reduce) { setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateX(40px)"; }, 400); setTimeout(render, 780); } else render();
       }
     }
     if (a.dataset.act === "parkedit") {
