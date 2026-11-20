@@ -171,6 +171,43 @@ main[hidden]{display:none}
 .lnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--go);color:#fff;font-size:12px;margin-right:2px}
 .leg.long{outline:2px solid #e8590c}.leg.long i{background:#e8590c}.leg.parkleg i{background:var(--map)}.leg.muted{opacity:.7}
 .hist{margin-top:16px;font-size:14px}.hist b{display:block;margin-bottom:6px}.hist div{display:grid;grid-template-columns:1.4fr .7fr 1fr 1fr;gap:6px;padding:6px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+
+/* ===== компактный экран доставки ===== */
+body.going header{padding:6px max(4vw,14px)}
+body.going header h1{font-size:17px}
+body.going .boss{min-height:36px;padding:0 10px}
+body.going main{padding-top:8px}
+.tasks.mini{border:0;padding:0;background:none;box-shadow:none;margin-bottom:6px;display:grid;gap:4px}
+.tasks.mini .task{min-height:40px;margin:0;padding:4px 10px;font-size:15px;border:1.5px solid #8b5cf6}
+.tasks.mini .tcirc{width:20px;height:20px;border-width:2px}
+.tasks.mini .ttext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.going #next .panel{padding:10px}
+body.going #next .top{margin-bottom:8px;gap:10px}
+body.going #next .top .av{width:40px;height:40px;font-size:18px}
+body.going #next .top h2{font-size:clamp(20px,6.5vw,28px)}
+body.going #next .more{width:40px;height:40px;margin:0}
+body.going #next .addrrow{margin-bottom:8px}
+body.going #next .addr{padding:6px 10px;gap:8px}
+body.going #next .addr .ic{width:32px;height:32px;font-size:17px}
+body.going #next .addr small{font-size:11px}
+body.going #next .addr b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.going #next .pin{width:54px;font-size:18px}
+body.going #next .note{padding:6px 10px;margin-bottom:8px;font-size:15px;line-height:1.35}
+body.going #next .note strong{font-size:20px}
+body.going #next .today{padding:6px 10px;font-size:15px;margin-bottom:8px}
+body.going #next .ctasks{padding:0;border:0;margin-bottom:8px;background:none}body.going #next .ctasks .th{display:none}
+body.going #next .ctasks .task{min-height:42px;margin:0;padding:4px 10px;font-size:15px;border:1.5px solid #8b5cf6}body.going #next .ctasks .tcirc{width:20px;height:20px;border-width:2px}
+body.going #next .lbl{display:none}
+body.going #next .prev{padding:4px 4px 4px 10px;margin-bottom:6px;font-size:13px;align-items:center}
+body.going #next .prev span{padding:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.going #next .shuf{width:34px;height:34px;font-size:15px}
+body.going #next .mins{grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+body.going #next .min{min-height:54px;border-radius:12px}
+body.going #next .min b{font-size:22px}body.going #next .min small{font-size:10px}
+body.going #next .arrive{min-height:50px;margin-top:6px}
+body.going #next .arrive b{font-size:17px}body.going #next .arrive small{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+body.going #next .btns{margin-top:6px;gap:6px}
+body.going #next .btns .btn{min-height:50px}
 /* ===== режим готовки ===== */
 .cook .ctop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cook .ctop span{color:var(--muted);font-size:13px;flex:1;text-align:right}
 .cprog{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0 12px}.cprog i{display:block;height:100%;background:var(--go);transition:width .5s cubic-bezier(.22,1,.36,1)}
@@ -453,10 +490,13 @@ function render() {
   const run = state.run, phase = !run ? "plan" : run.end ? "stats" : "go";
   document.getElementById("nextHead").innerHTML = `<span>${phase === "plan" ? "Подготовка маршрута" : phase === "stats" ? "Итоги доставки" : "Следующий"}</span>`;
   list.hidden = bar.hidden = phase === "stats";
+  // во время доставки всё для клиента — на одном экране
+  document.body.classList.toggle("going", phase === "go" && active.length > 0);
+  document.getElementById("nextHead").hidden = phase === "go" && active.length > 0;
   next.innerHTML = !all.length ? `<div class="panel empty welcome"><div style="font-size:44px">📦</div><h2 class="cond">Список пуст</h2><p>Нажми «📂 Восстановить» внизу и выбери файл с контактами — или добавь клиента вручную.</p></div>`
     : phase === "plan" ? `<div class="panel parkcard"><span><small>🅿️ Код от парковки</small><b>${esc(SETTINGS.parkCode || "не задан")}</b></span><button class="sck" data-act="parkedit" aria-label="Изменить код парковки">✏️</button></div>${tasksHTML(true)}<div class="panel plan"><b>🗺 Выставь очередь на сегодня</b><p>Удерживай и перетаскивай клиентов в нужном порядке. ✓ — убрать тех, к кому сегодня не едешь. Потом внизу нажми «Начать доставку».</p></div>`
     : phase === "stats" ? statsHTML()
-    : active.length ? tasksHTML(false) + panel(active[0]) : tasksHTML(false) + finishHTML();
+    : active.length ? tasksHTML(false, active[0]) + panel(active[0]) : tasksHTML(false) + finishHTML();
   const nextName = active.length ? active[0].name : "";
   if (nextName !== lastNext && lastNext !== null) next.firstElementChild.classList.add("enter");
   lastNext = nextName;
@@ -765,9 +805,12 @@ function tasksFor(p) {
 function taskRow(t) {
   return `<div class="task" role="button" tabindex="0" data-hold="${t.id}"><i class="tfill"></i><span class="tcirc"></span><span class="ttext">${esc(t.text)}</span></div>`;
 }
-function tasksHTML(edit) {
-  const ts = openTasks();
+function tasksHTML(edit, cur) {
+  // заметки, которые относятся к текущему клиенту, показываются в его карточке, а не сверху
+  const own = cur ? new Set(tasksFor(cur).map(t => t.id)) : new Set();
+  const ts = openTasks().filter(t => !own.has(t.id));
   if (!ts.length) return edit ? `<button class="taskbtn" data-act="taskadd">📝 Добавить заметку на сегодня</button>` : "";
+  if (!edit) return `<div class="tasks mini">${ts.map(taskRow).join("")}</div>`;
   return `<div class="panel tasks">
     <div class="th">📝 На сегодня</div>
     ${ts.map(taskRow).join("")}
