@@ -140,6 +140,22 @@ main[hidden]{display:none}
 .prow .iamt{font-size:20px}
 .pdish{margin-bottom:8px;padding:8px 10px}.pdish.pdone{opacity:.55}
 .pdh{display:flex;align-items:center;gap:8px;margin:4px 4px 6px}.pdh b{flex:1;font-size:16px}.pcount{font-weight:800;font-variant-numeric:tabular-nums;background:var(--soft);border-radius:8px;padding:2px 8px}
+[hidden]{display:none!important}
+/* ===== рейс ===== */
+.plan b{font-size:17px}.plan p{margin:6px 0 0;color:var(--muted);font-size:15px}
+.startrun{display:block;width:100%;min-height:64px;margin-top:12px;border:0;border-radius:16px;background:var(--go);color:#fff;font:inherit;font-size:20px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.22,1,.36,1)}
+.startrun:active{transform:scale(.97);transition-duration:.08s}.startrun[disabled]{opacity:.4}
+.startrun.park{background:#e8590c}
+.abort{display:block;margin:12px auto 0;color:var(--muted)}
+.stats .big{font-size:48px;text-align:center}.stats h2{text-align:center;margin:4px 0 12px;font-size:28px}
+.snums{display:grid;gap:8px;grid-template-columns:1fr 1fr}.snums b{font-size:22px}
+.legs{margin-top:12px;display:grid;gap:6px}
+.leg{position:relative;display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--soft);overflow:hidden;font-size:15px}
+.leg i{position:absolute;left:0;bottom:0;height:3px;background:var(--go);border-radius:2px}
+.leg .lt{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}.leg .ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.leg .ld{font-weight:800;font-variant-numeric:tabular-nums}
+.lnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--go);color:#fff;font-size:12px;margin-right:2px}
+.leg.long{outline:2px solid #e8590c}.leg.long i{background:#e8590c}.leg.parkleg i{background:var(--map)}.leg.muted{opacity:.7}
+.hist{margin-top:16px;font-size:14px}.hist b{display:block;margin-bottom:6px}.hist div{display:grid;grid-template-columns:1.4fr .7fr 1fr 1fr;gap:6px;padding:6px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
 /* ===== режим готовки ===== */
 .cook .ctop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.cook .ctop span{color:var(--muted);font-size:13px;flex:1;text-align:right}
 .cprog{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 0 12px}.cprog i{display:block;height:100%;background:var(--go);transition:width .5s cubic-bezier(.22,1,.36,1)}
@@ -223,10 +239,11 @@ main[hidden]{display:none}
 <div id="timers" aria-live="polite"></div>
 <main id="delivery">
   <div id="home">
-    <div class="sec cond"><span>Следующий</span></div>
+    <div class="sec cond" id="nextHead"><span>Следующий</span></div>
     <div id="next"></div>
     <div class="sec cond" id="bar"></div>
     <ul id="list" class="list"></ul>
+    <div id="runbar"></div>
     <button class="btn addnew" data-act="add">＋ Добавить клиента</button>
     <div class="backup"><button class="btn" data-act="export">💾 Сохранить копию</button><label class="btn">📂 Восстановить<input type="file" id="importFile" accept=".json,application/json" hidden></label></div>
     <p id="syncNote" class="sync"></p>
@@ -319,7 +336,7 @@ const mapsLink = p => p.maps || "https://www.google.com/maps/search/?api=1&query
 let state = {order: defOrder(), hidden: [], today: {}};
 try {
   const st = JSON.parse(localStorage.getItem(KEY) || "null");
-  if (st && Array.isArray(st.order)) state = {order: st.order, hidden: Array.isArray(st.hidden) ? st.hidden : [], today: st.today && typeof st.today === "object" ? st.today : {}, done: Array.isArray(st.done) ? st.done : [], doneDay: st.doneDay || "", trip: st.trip && st.trip.name && Date.now() - st.trip.start < 6 * 3600000 ? st.trip : null};
+  if (st && Array.isArray(st.order)) state = {order: st.order, hidden: Array.isArray(st.hidden) ? st.hidden : [], today: st.today && typeof st.today === "object" ? st.today : {}, done: Array.isArray(st.done) ? st.done : [], doneDay: st.doneDay || "", run: st.run || null, doneAt: st.doneAt || {}, trip: st.trip && st.trip.name && Date.now() - st.trip.start < 6 * 3600000 ? st.trip : null};
 } catch (e) {}
 state.order = state.order.map(n => RENAME[n] || n);
 state.hidden = state.hidden.map(n => RENAME[n] || n);
@@ -331,11 +348,15 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } c
 const isOff = p => state.hidden.includes(p.name);
 // Доставленные за сегодня: остаются на своём месте со своим номером, утром сбрасываются
 state.done = Array.isArray(state.done) ? state.done : [];
-if (state.doneDay !== dayKey()) { state.done = []; state.doneDay = dayKey(); }
+// Доставка-рейс: run = {start, parkStart, end}; doneAt — во сколько доставлен каждый
+state.run = state.run && state.run.start ? state.run : null;
+state.doneAt = state.doneAt && typeof state.doneAt === "object" ? state.doneAt : {};
+if (state.doneDay !== dayKey() && !state.run) { state.done = []; state.doneAt = {}; state.doneDay = dayKey(); }
 const isDone = p => state.done.includes(p.name);
 function markDone(name) {
   const k = state.done.indexOf(name);
-  if (k < 0) state.done.push(name); else state.done.splice(k, 1);
+  if (k < 0) { state.done.push(name); state.doneAt[name] = Date.now(); if (!state.run) state.run = {start: Date.now()}; }
+  else { state.done.splice(k, 1); delete state.doneAt[name]; }
   state.doneDay = dayKey();
   save(); render();
 }
@@ -413,19 +434,19 @@ function render() {
   const route = all.filter(p => !isOff(p));          // сегодняшний маршрут, с номерами
   const active = route.filter(p => !isDone(p));      // кого ещё везти
   const offCount = all.length - route.length;
-  next.innerHTML = !all.length ? `<div class="panel empty welcome"><div style="font-size:44px">📦</div><h2 class="cond">Список пуст</h2><p>Нажми «📂 Восстановить» внизу и выбери файл с контактами — или добавь клиента вручную.</p></div>` : active.length ? panel(active[0]) : `<div class="panel finish">
-      <div class="big">🎉</div>
-      <h2 class="cond">Маршрут завершён!</h2>
-      <p>Все доставлено. Отличная работа!</p>
-      ${SETTINGS.parkLat ? `<div class="addrrow"><a class="addr" href="${esc(parkNav())}" target="_blank" rel="noopener"><span class="ic">🅿️</span><span><small>Поехали · навигация</small><b>Парковка${SETTINGS.parkCode ? " · код " + esc(SETTINGS.parkCode) : ""}</b></span></a><a class="pin" href="${esc(parkMap())}" target="_blank" rel="noopener" aria-label="Парковка на карте">📍<small>карта</small></a></div>` : ""}
-      <button class="btn" data-act="restart">↺ Начать новый маршрут</button>
-    </div>`;
+  const run = state.run, phase = !run ? "plan" : run.end ? "stats" : "go";
+  document.getElementById("nextHead").innerHTML = `<span>${phase === "plan" ? "Подготовка маршрута" : phase === "stats" ? "Итоги доставки" : "Следующий"}</span>`;
+  list.hidden = bar.hidden = phase === "stats";
+  next.innerHTML = !all.length ? `<div class="panel empty welcome"><div style="font-size:44px">📦</div><h2 class="cond">Список пуст</h2><p>Нажми «📂 Восстановить» внизу и выбери файл с контактами — или добавь клиента вручную.</p></div>`
+    : phase === "plan" ? `<div class="panel plan"><b>🗺 Выставь очередь на сегодня</b><p>Удерживай и перетаскивай клиентов в нужном порядке. ✓ — убрать тех, к кому сегодня не едешь. Потом внизу нажми «Начать доставку».</p></div>`
+    : phase === "stats" ? statsHTML()
+    : active.length ? panel(active[0]) : finishHTML();
   const nextName = active.length ? active[0].name : "";
   if (nextName !== lastNext && lastNext !== null) next.firstElementChild.classList.add("enter");
   lastNext = nextName;
   const def = defOrder();
   const changed = route.map(p => p.name).join() !== def.filter(n => !state.hidden.includes(n)).join();
-  bar.innerHTML = `<span>Маршрут · доставлено ${route.length - active.length} из ${route.length}</span>${changed ? `<button class="tb" data-act="reset">↺ Исходный порядок</button>` : ""}${offCount ? `<button class="tb" data-act="showall">Вернуть всех</button>` : ""}`;
+  bar.innerHTML = `<span>${phase === "plan" ? `Маршрут на сегодня · ${route.length}` : `Маршрут · доставлено ${route.length - active.length} из ${route.length}`}</span>${changed ? `<button class="tb" data-act="reset">↺ Исходный порядок</button>` : ""}${offCount ? `<button class="tb" data-act="showall">Вернуть всех</button>` : ""}`;
   const firstActive = active.length ? active[0].name : null;
   list.innerHTML = all.map(p => {
     const off = isOff(p), dn = isDone(p);
@@ -437,6 +458,9 @@ function render() {
       ${off || dn ? "" : `<button class="handle" aria-label="Перетащить ${esc(p.name)}">⠿</button>`}
     </li>`;
   }).join("");
+  const rb = document.getElementById("runbar");
+  rb.innerHTML = !all.length ? "" : phase === "plan" ? `<button class="startrun" data-act="startrun" ${route.length ? "" : "disabled"}>🚀 Начать доставку · ${route.length}</button>`
+    : phase === "go" ? `<button class="tb abort" data-act="endnow">⏹ Закончить доставку сейчас</button>` : "";
   if (!drag) animateList(before);
   if (openName && editing === null) {
     const p = all.find(x => x.name === openName);
@@ -597,6 +621,73 @@ function whoosh() {
     src.start(t0); src.stop(t0 + dur + .02);
   } catch (e) {}
 }
+// ===== Рейс: старт → клиенты → парковка → итоги =====
+const RUNS = "knc-runs-v1";
+const hhmm = t => { const d = new Date(t); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+function dur(ms) {
+  const m = Math.round(Math.max(0, ms) / 60000);
+  if (m < 1) return "< 1 мин";
+  return m >= 60 ? `${Math.floor(m / 60)} ч ${String(m % 60).padStart(2, "0")} мин` : `${m} мин`;
+}
+function lastDeliveryAt() { const ts = Object.values(state.doneAt); return ts.length ? Math.max(...ts) : (state.run ? state.run.start : Date.now()); }
+function finishHTML() {
+  const r = state.run;
+  const navBtn = SETTINGS.parkLat ? `<a class="pin" href="${esc(parkMap())}" target="_blank" rel="noopener" aria-label="Парковка на карте">📍<small>карта</small></a>` : "";
+  if (!r.parkStart) return `<div class="panel finish">
+      <div class="big">🎉</div>
+      <h2 class="cond">Все доставлено!</h2>
+      <p>Последний клиент в ${hhmm(lastDeliveryAt())} · в пути ${dur(lastDeliveryAt() - r.start)}</p>
+      <button class="startrun park" data-act="topark">🅿️ Еду на парковку</button>
+      <button class="tb" data-act="endrun" style="margin-top:10px">Завершить без парковки</button>
+    </div>`;
+  return `<div class="panel finish">
+      <div class="big">🅿️</div>
+      <h2 class="cond">Еду на парковку</h2>
+      <p>Выехал в ${hhmm(r.parkStart)} · в пути <b id="parkClock">${dur(Date.now() - r.parkStart)}</b></p>
+      ${SETTINGS.parkLat ? `<div class="addrrow"><a class="addr" href="${esc(parkNav())}" target="_blank" rel="noopener"><span class="ic">🧭</span><span><small>Навигация до парковки</small><b>Парковка${SETTINGS.parkCode ? " · код " + esc(SETTINGS.parkCode) : ""}</b></span></a>${navBtn}</div>` : ""}
+      <button class="startrun" data-act="endrun">🏁 Завершить доставку</button>
+    </div>`;
+}
+function runStats(r, doneAt, order) {
+  const stops = Object.entries(doneAt).filter(([, t]) => t >= r.start - 60000).sort((a, b) => a[1] - b[1]);
+  let prev = r.start;
+  const legs = stops.map(([name, t]) => { const l = {name, t, d: t - prev}; prev = t; return l; });
+  const last = legs.length ? legs[legs.length - 1].t : r.start;
+  return {legs, last, clientsTime: last - r.start, wait: r.parkStart ? r.parkStart - last : 0, park: r.parkStart ? r.end - r.parkStart : 0, tail: r.parkStart ? 0 : r.end - last, total: r.end - r.start};
+}
+function statsHTML() {
+  const r = state.run, S = runStats(r, state.doneAt);
+  const n = S.legs.length, avg = n ? S.clientsTime / n : 0;
+  const maxD = Math.max(1, ...S.legs.map(l => l.d), S.park);
+  const longest = S.legs.reduce((m, l) => l.d > (m ? m.d : -1) ? l : m, null);
+  const row = (icon, label, t, d, cls) => `<div class="leg${cls ? " " + cls : ""}"><span class="lt">${hhmm(t)}</span><span class="ln">${icon} ${esc(label)}</span><span class="ld">${d == null ? "" : dur(d)}</span>${d == null ? "" : `<i style="width:${Math.max(4, Math.round(d / maxD * 100))}%"></i>`}</div>`;
+  let hist = [];
+  try { hist = JSON.parse(localStorage.getItem(RUNS) || "[]"); } catch (e) {}
+  return `<div class="panel stats">
+    <div class="big">🏁</div>
+    <h2 class="cond">Доставка завершена</h2>
+    <div class="pnums snums"><div><b>${dur(S.total)}</b><span>всего · ${hhmm(r.start)}–${hhmm(r.end)}</span></div><div><b>${n}</b><span>клиентов</span></div>
+      <div><b>${dur(S.clientsTime)}</b><span>по клиентам</span></div><div><b>${dur(avg)}</b><span>в среднем на клиента</span></div></div>
+    <div class="legs">
+      ${row("🚀", "Старт", r.start, null)}
+      ${S.legs.map((l, i) => row(`<b class="lnum">${i + 1}</b>`, l.name, l.t, l.d, longest && l === longest && n > 2 ? "long" : "")).join("")}
+      ${r.parkStart ? (S.wait > 60000 ? row("⏸", "После последнего клиента", r.parkStart, S.wait, "muted") : "") + row("🅿️", "Парковка", r.end, S.park, "parkleg") : row("🏁", "Завершение", r.end, S.tail, "muted")}
+    </div>
+    ${longest && n > 2 ? `<p class="rmeta">Самый долгий отрезок — до ${esc(longest.name)}: ${dur(longest.d)}</p>` : ""}
+    <div class="two" style="margin-top:12px"><button class="btn" data-act="copyreport">📋 Отчёт</button><button class="btn save" data-act="newrun">🆕 Новая доставка</button></div>
+    ${hist.length ? `<div class="hist"><b>Прошлые доставки</b>${hist.slice(0, 7).map(h => `<div><span>${esc(h.date)}</span><span>${h.n} кл.</span><span>${dur(h.total)}</span><span>⌀ ${dur(h.avg)}</span></div>`).join("")}</div>` : ""}
+  </div>`;
+}
+function reportText() {
+  const r = state.run, S = runStats(r, state.doneAt), d = new Date(r.start);
+  const lines = [`Доставка ${d.getDate()}.${String(d.getMonth() + 1).padStart(2, "0")}: ${S.legs.length} клиентов, ${hhmm(r.start)}–${hhmm(r.end)} (${dur(S.total)})`,
+    `По клиентам: ${dur(S.clientsTime)}, в среднем ${dur(S.legs.length ? S.clientsTime / S.legs.length : 0)}`];
+  if (r.parkStart) lines.push(`До парковки: ${dur(S.park)}`);
+  S.legs.forEach((l, i) => lines.push(`${i + 1}. ${l.name} — ${hhmm(l.t)} (+${dur(l.d)})`));
+  return lines.join("\n");
+}
+setInterval(() => { const c = document.getElementById("parkClock"); if (c && state.run && state.run.parkStart) c.textContent = dur(Date.now() - state.run.parkStart); }, 15000);
+
 function checkFinish() {
   const route = CONTACTS.filter(p => !state.hidden.includes(p.name));
   if (route.length && state.done.length && route.every(p => state.done.includes(p.name))) { setTimeout(bigCelebrate, 250); window.scrollTo({top: 0, behavior: "smooth"}); }
@@ -816,6 +907,34 @@ document.addEventListener("click", e => {
       markDone(n);
       if (openName) closeDetail();
       if (delivering) checkFinish();
+    }
+    if (a.dataset.act === "startrun") {
+      state.run = {start: Date.now()}; state.done = []; state.doneAt = {}; state.doneDay = dayKey(); save();
+      celebrate(a); showToast("🚀 Поехали! Старт в " + hhmm(state.run.start), false); render(); window.scrollTo({top: 0, behavior: "smooth"});
+    }
+    if (a.dataset.act === "topark") {
+      state.run.parkStart = Date.now(); save(); render();
+      if (SETTINGS.parkLat) { const w = window.open(parkNav(), "_blank"); if (!w) location.href = parkNav(); }
+    }
+    if (a.dataset.act === "endnow") {
+      confirmBox("Закончить доставку?", "Не все клиенты отмечены. Итоги посчитаются по тем, кто доставлен.", "Да, закончить").then(ok => { if (!ok) return; state.run.end = Date.now(); save(); render(); window.scrollTo(0, 0); });
+    }
+    if (a.dataset.act === "endrun") {
+      state.run.end = Date.now(); save();
+      const S = runStats(state.run, state.doneAt);
+      try {
+        const h = JSON.parse(localStorage.getItem(RUNS) || "[]"), d = new Date(state.run.start);
+        h.unshift({date: `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, "0")} ${hhmm(state.run.start)}`, n: S.legs.length, total: S.total, avg: S.legs.length ? S.clientsTime / S.legs.length : 0, park: S.park});
+        localStorage.setItem(RUNS, JSON.stringify(h.slice(0, 30)));
+      } catch (e) {}
+      bigCelebrate(); render(); window.scrollTo(0, 0);
+    }
+    if (a.dataset.act === "copyreport") {
+      const t = reportText();
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => showToast("📋 Отчёт скопирован — можно отправить Кириллу", false), () => showToast(copyFallback(t) ? "📋 Отчёт скопирован" : "Не удалось скопировать", false));
+    }
+    if (a.dataset.act === "newrun") {
+      state.run = null; state.done = []; state.doneAt = {}; state.hidden = []; state.trip = null; save(); render(); window.scrollTo(0, 0);
     }
     if (a.dataset.act === "showall") { remember("Все возвращены"); state.hidden = []; save(); render(); }
     if (a.dataset.act === "undo") undo();
