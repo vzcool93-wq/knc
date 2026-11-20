@@ -143,11 +143,14 @@ main[hidden]{display:none}
 [hidden]{display:none!important}
 .tasks{margin-bottom:8px;border:2px solid #8b5cf6}
 .tasks .th{font-weight:800;color:light-dark(#5b21b6,#c4b5fd);margin-bottom:4px}
-.task{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;margin-top:6px;padding:8px 12px;border:0;border-radius:12px;background:light-dark(#f1ebff,#2a1f45);color:var(--ink);font:inherit;font-size:17px;font-weight:600;text-align:left;cursor:pointer;transition:opacity .35s,transform .35s}
+.task{position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y;display:flex;align-items:center;gap:12px;width:100%;min-height:56px;margin-top:6px;padding:8px 12px;border:0;border-radius:12px;background:light-dark(#f1ebff,#2a1f45);color:var(--ink);font:inherit;font-size:17px;font-weight:600;text-align:left;cursor:pointer;transition:opacity .35s,transform .35s}
 .tcirc{flex:none;width:28px;height:28px;border-radius:50%;border:2.5px solid #8b5cf6;display:grid;place-items:center}
 .task.tdone .tcirc{background:#8b5cf6}.task.tdone .tcirc::after{content:"✓";color:#fff;font-weight:900;font-size:16px}
 .task.tdone .ttext{text-decoration:line-through;opacity:.6}
-.ttext{flex:1}
+.ttext{flex:1;position:relative}.tcirc{position:relative}
+.tfill{position:absolute;left:0;top:0;bottom:0;width:0;background:light-dark(#d9c8ff,#3f2d6b);border-radius:12px}
+.task.pressing .tfill{width:100%;transition:width .6s linear}
+.task.pressing{transform:scale(.98)}
 .thint{margin:8px 2px 0;color:var(--muted);font-size:13px}
 .tmore{display:block;width:100%;margin-top:8px;min-height:44px;border:0;border-radius:12px;background:none;color:light-dark(#5b21b6,#c4b5fd);font:inherit;font-weight:700;cursor:pointer}
 .taskbtn{display:block;width:100%;min-height:52px;margin-bottom:8px;border:2px dashed #8b5cf6;border-radius:14px;background:var(--card);color:light-dark(#5b21b6,#c4b5fd);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
@@ -720,6 +723,34 @@ function reportText() {
 setInterval(() => { const c = document.getElementById("parkClock"); if (c && state.run && state.run.parkStart) c.textContent = dur(Date.now() - state.run.parkStart); }, 15000);
 
 // ===== Задачи на сегодня («взять деньги у клиента») =====
+function completeTask(t, el) {
+  remember("✓ " + t.text);
+  t.done = true; save(); chime([[988, 0, .12], [1319, .1, .25]]);
+  if (navigator.vibrate) try { navigator.vibrate(30); } catch (e) {}
+  el.classList.add("tdone");
+  if (!reduce) { setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateX(40px)"; }, 400); setTimeout(render, 780); } else render();
+}
+// Отметить заметку можно только удержанием (~0,6 с), чтобы случайное касание её не закрыло
+const TASK_HOLD = 600;
+let tHold = null, tHintShown = false;
+document.addEventListener("pointerdown", e => {
+  const el = e.target.closest("[data-hold]");
+  if (!el || el.classList.contains("tdone")) return;
+  const t = state.tasks.find(x => x.id === el.dataset.hold);
+  if (!t) return;
+  el.classList.add("pressing");
+  tHold = {el, x: e.clientX, y: e.clientY, t0: Date.now(), timer: setTimeout(() => { el.classList.remove("pressing"); tHold = null; completeTask(t, el); }, TASK_HOLD)};
+});
+const tCancel = (hint) => {
+  if (!tHold) return;
+  clearTimeout(tHold.timer); tHold.el.classList.remove("pressing");
+  if (hint && Date.now() - tHold.t0 < TASK_HOLD && !tHintShown) { tHintShown = true; showToast("Удерживай заметку, чтобы отметить ✓", false); setTimeout(() => { tHintShown = false; }, 4000); }
+  tHold = null;
+};
+document.addEventListener("pointerup", () => tCancel(true));
+document.addEventListener("pointercancel", () => tCancel(false));
+document.addEventListener("pointermove", e => { if (tHold && (Math.abs(e.clientX - tHold.x) > 10 || Math.abs(e.clientY - tHold.y) > 10)) tCancel(false); });
+document.addEventListener("contextmenu", e => { if (e.target.closest("[data-hold]")) e.preventDefault(); });
 state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
 const openTasks = () => state.tasks.filter(t => !t.done);
 // Задача «прилипает» к клиенту, если в ней есть его имя (латиницей или кириллицей, в любом падеже)
@@ -732,7 +763,7 @@ function tasksFor(p) {
   return openTasks().filter(t => t.text.toLowerCase().split(/[^a-zа-яё]+/i).some(w => stems.some(st => w.startsWith(st))));
 }
 function taskRow(t) {
-  return `<button class="task" data-act="taskdone" data-id="${t.id}"><span class="tcirc"></span><span class="ttext">${esc(t.text)}</span></button>`;
+  return `<div class="task" role="button" tabindex="0" data-hold="${t.id}"><i class="tfill"></i><span class="tcirc"></span><span class="ttext">${esc(t.text)}</span></div>`;
 }
 function tasksHTML(edit) {
   const ts = openTasks();
@@ -740,7 +771,7 @@ function tasksHTML(edit) {
   return `<div class="panel tasks">
     <div class="th">📝 На сегодня</div>
     ${ts.map(taskRow).join("")}
-    ${edit ? `<button class="tmore" data-act="taskadd">+ Добавить ещё</button>` : `<p class="thint">Нажми на заметку, когда сделал</p>`}
+    ${edit ? `<button class="tmore" data-act="taskadd">+ Добавить ещё</button>` : `<p class="thint">Удержи заметку, когда сделал</p>`}
   </div>`;
 }
 
@@ -969,6 +1000,10 @@ document.addEventListener("click", e => {
     }
     if (a.dataset.act === "taskdone") {
       const t = state.tasks.find(x => x.id === a.dataset.id);
+      if (t) completeTask(t, a);
+    }
+    if (false) {
+      const t = null;
       if (t) {
         remember("✓ " + t.text);
         t.done = true; save(); chime([[988, 0, .12], [1319, .1, .25]]);
