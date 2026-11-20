@@ -26,7 +26,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Rob
 header{background:var(--brand);color:var(--cream);padding:10px max(4vw,14px);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .hdr{display:flex;gap:8px;flex:1 1 auto;justify-content:flex-end;flex-wrap:wrap}
 header h1{margin:0;font-size:22px;line-height:1;font-weight:600;white-space:nowrap;flex:0 0 auto}
-@media(max-width:520px){header h1{flex:1 1 100%}.hdr{flex:1 1 100%;justify-content:stretch}.hdr .park{flex:1;justify-content:center}}
+@media(max-width:520px){header h1{flex:1 1 auto;font-size:20px}.hdr{flex:0 0 auto}}
 .park{text-decoration:none;color:inherit;display:flex;align-items:baseline;gap:8px;min-height:44px;align-items:center;white-space:nowrap;background:rgba(0,0,0,.25);border-radius:10px;padding:6px 10px}
 .park small{font-size:13px;opacity:.9}.park b{font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .boss{display:flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border-radius:10px;background:var(--cream);color:var(--brand);text-decoration:none;transition:transform .25s cubic-bezier(.22,1,.36,1)}.boss b{font-size:16px}.boss small{font-size:12px;opacity:.75}.boss:active{transform:scale(.95);transition-duration:.08s}
@@ -141,6 +141,7 @@ main[hidden]{display:none}
 .pdish{margin-bottom:8px;padding:8px 10px}.pdish.pdone{opacity:.55}
 .pdh{display:flex;align-items:center;gap:8px;margin:4px 4px 6px}.pdh b{flex:1;font-size:16px}.pcount{font-weight:800;font-variant-numeric:tabular-nums;background:var(--soft);border-radius:8px;padding:2px 8px}
 [hidden]{display:none!important}
+.parkcard{display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--brand);color:var(--cream)}.parkcard span{flex:1}.parkcard small{display:block;font-size:13px;opacity:.85}.parkcard b{font-size:30px;letter-spacing:.05em;font-variant-numeric:tabular-nums}.parkcard .sck{background:rgba(255,255,255,.15);color:var(--cream)}
 /* ===== рейс ===== */
 .plan b{font-size:17px}.plan p{margin:6px 0 0;color:var(--muted);font-size:15px}
 .startrun{display:block;width:100%;min-height:64px;margin-top:12px;border:0;border-radius:16px;background:var(--go);color:#fff;font:inherit;font-size:20px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.22,1,.36,1)}
@@ -275,8 +276,8 @@ const parkNav = () => SETTINGS.parkLat ? `https://www.google.com/maps/dir/?api=1
 const parkMap = () => SETTINGS.parkMap || (SETTINGS.parkLat ? `https://www.google.com/maps/search/?api=1&query=${SETTINGS.parkLat},${SETTINGS.parkLng}` : "");
 function renderHeader() {
   const h = document.getElementById("hdr");
-  h.innerHTML = (SETTINGS.parkCode || SETTINGS.parkLat ? `<a class="park" href="${esc(parkNav() || "#")}" target="_blank" rel="noopener"><small>🅿️ Парковка</small><b>${esc(SETTINGS.parkCode || "")}</b></a>` : "")
-    + (SETTINGS.bossTg ? `<a class="boss" href="${esc(chatLink(SETTINGS.bossTg))}" target="_blank" rel="noopener"><span>💬</span><b>${esc(SETTINGS.bossName || SETTINGS.bossTg)}</b></a>` : "");
+  // код парковки больше не в шапке — он показывается только при подготовке маршрута
+  h.innerHTML = (SETTINGS.bossTg ? `<a class="boss" href="${esc(chatLink(SETTINGS.bossTg))}" target="_blank" rel="noopener"><span>💬</span><b>${esc(SETTINGS.bossName || SETTINGS.bossTg)}</b></a>` : "");
 }
 const MINUTES = [3, 5, 7, 10, 13, 15];
 const KEY = "contacts-state-v1";
@@ -438,7 +439,7 @@ function render() {
   document.getElementById("nextHead").innerHTML = `<span>${phase === "plan" ? "Подготовка маршрута" : phase === "stats" ? "Итоги доставки" : "Следующий"}</span>`;
   list.hidden = bar.hidden = phase === "stats";
   next.innerHTML = !all.length ? `<div class="panel empty welcome"><div style="font-size:44px">📦</div><h2 class="cond">Список пуст</h2><p>Нажми «📂 Восстановить» внизу и выбери файл с контактами — или добавь клиента вручную.</p></div>`
-    : phase === "plan" ? `<div class="panel plan"><b>🗺 Выставь очередь на сегодня</b><p>Удерживай и перетаскивай клиентов в нужном порядке. ✓ — убрать тех, к кому сегодня не едешь. Потом внизу нажми «Начать доставку».</p></div>`
+    : phase === "plan" ? `<div class="panel parkcard"><span><small>🅿️ Код от парковки</small><b>${esc(SETTINGS.parkCode || "не задан")}</b></span><button class="sck" data-act="parkedit" aria-label="Изменить код парковки">✏️</button></div><div class="panel plan"><b>🗺 Выставь очередь на сегодня</b><p>Удерживай и перетаскивай клиентов в нужном порядке. ✓ — убрать тех, к кому сегодня не едешь. Потом внизу нажми «Начать доставку».</p></div>`
     : phase === "stats" ? statsHTML()
     : active.length ? panel(active[0]) : finishHTML();
   const nextName = active.length ? active[0].name : "";
@@ -466,6 +467,23 @@ function render() {
     const p = all.find(x => x.name === openName);
     detail.innerHTML = `<button class="back" data-act="back">← Назад к маршруту</button>${p ? panel(p) : ""}`;
   }
+}
+
+// ===== Окно с полем ввода =====
+function inputBox(title, value) {
+  return new Promise(resolve => {
+    const wrap = document.createElement("div");
+    wrap.className = "modal";
+    wrap.innerHTML = `<form class="sheet" role="dialog" aria-modal="true"><h3>${esc(title)}</h3>
+      <input id="ibox" value="${esc(value)}" autocomplete="off" style="width:100%;font:inherit;font-size:22px;font-weight:800;padding:10px 12px;border-radius:12px;border:2px solid var(--go);background:var(--bg);color:var(--ink);margin:6px 0 14px">
+      <div class="mbtns"><button type="button" class="btn" data-m="no">Отмена</button><button type="submit" class="btn mok">Сохранить</button></div></form>`;
+    document.body.appendChild(wrap);
+    requestAnimationFrame(() => wrap.classList.add("open"));
+    const inp = wrap.querySelector("#ibox"); setTimeout(() => { inp.focus(); inp.select(); }, 50);
+    const close = v => { wrap.classList.remove("open"); setTimeout(() => wrap.remove(), 250); resolve(v); };
+    wrap.querySelector("form").addEventListener("submit", e => { e.preventDefault(); e.stopPropagation(); close(inp.value); });
+    wrap.addEventListener("click", e => { e.stopPropagation(); if (e.target === wrap || e.target.closest("[data-m=no]")) close(null); });
+  });
 }
 
 // ===== Окно подтверждения =====
@@ -644,7 +662,7 @@ function finishHTML() {
       <div class="big">🅿️</div>
       <h2 class="cond">Еду на парковку</h2>
       <p>Выехал в ${hhmm(r.parkStart)} · в пути <b id="parkClock">${dur(Date.now() - r.parkStart)}</b></p>
-      ${SETTINGS.parkLat ? `<div class="addrrow"><a class="addr" href="${esc(parkNav())}" target="_blank" rel="noopener"><span class="ic">🧭</span><span><small>Навигация до парковки</small><b>Парковка${SETTINGS.parkCode ? " · код " + esc(SETTINGS.parkCode) : ""}</b></span></a>${navBtn}</div>` : ""}
+      ${SETTINGS.parkLat ? `<div class="addrrow"><a class="addr" href="${esc(parkNav())}" target="_blank" rel="noopener"><span class="ic">🧭</span><span><small>Навигация до парковки</small><b>Парковка</b></span></a>${navBtn}</div>` : ""}
       <button class="startrun" data-act="endrun">🏁 Завершить доставку</button>
     </div>`;
 }
@@ -907,6 +925,9 @@ document.addEventListener("click", e => {
       markDone(n);
       if (openName) closeDetail();
       if (delivering) checkFinish();
+    }
+    if (a.dataset.act === "parkedit") {
+      inputBox("🅿️ Код от парковки", SETTINGS.parkCode || "").then(v => { if (v === null) return; SETTINGS.parkCode = v.trim(); saveSettings(); render(); showToast("Код парковки сохранён", false); });
     }
     if (a.dataset.act === "startrun") {
       state.run = {start: Date.now()}; state.done = []; state.doneAt = {}; state.doneDay = dayKey(); save();
