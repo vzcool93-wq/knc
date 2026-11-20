@@ -272,7 +272,7 @@ let CONTACTS = DEFAULT.map(p => ({...p}));
 
 const defOrder = () => CONTACTS.map(p => p.name);
 // если на телефоне сохранились кириллические имена — вернуть к латинице
-const RENAME = {"Анастасия": "Anastasia", "Вова": "Vova", "Анна": "Ann", "Роман": "Roman", "Оксем": "Oksem", "Виктория": "Viktoria", "Андрей": "Andrew", "Катрин": "Katrin"};
+const RENAME = {}; // старая миграция имён больше не нужна
 // Парковка
 // Парковка и начальник — тоже НЕ в коде: хранятся на телефоне и в файле-копии
 const SKEY = "knc-settings-v1";
@@ -714,7 +714,7 @@ function reportText() {
 }
 setInterval(() => { const c = document.getElementById("parkClock"); if (c && state.run && state.run.parkStart) c.textContent = dur(Date.now() - state.run.parkStart); }, 15000);
 
-// ===== Задачи на сегодня («взять деньги у Оксема») =====
+// ===== Задачи на сегодня («взять деньги у клиента») =====
 state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
 const openTasks = () => state.tasks.filter(t => !t.done);
 // Задача «прилипает» к клиенту, если в ней есть его имя (латиницей или кириллицей, в любом падеже)
