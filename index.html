@@ -732,7 +732,7 @@ function tasksHTML(edit) {
   return `<div class="panel tasks${edit ? "" : " pinned"}">
     <b class="th">📝 На сегодня${ts.length ? ` · ${ts.length}` : ""}</b>
     ${ts.map(t => `<div class="task" data-id="${t.id}"><span>${esc(t.text)}</span><button data-act="taskdone" data-id="${t.id}" aria-label="Выполнено">✓</button></div>`).join("")}
-    ${edit ? `<form class="taskadd" id="taskForm"><input id="taskText" placeholder="Например: Оксем — взять деньги" autocomplete="off"><button class="btn save" type="submit" aria-label="Добавить">＋</button></form>` : ""}
+    ${edit ? `<form class="taskadd" id="taskForm"><input id="taskText" placeholder="Например: Мария — взять деньги" autocomplete="off"><button class="btn save" type="submit" aria-label="Добавить">＋</button></form>` : ""}
   </div>`;
 }
 document.addEventListener("submit", e => {
